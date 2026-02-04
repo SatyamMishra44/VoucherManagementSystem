@@ -41,12 +41,25 @@ public class VoucherRedemption {
     protected VoucherRedemption(){
      // this is only for the JPA
     }
-    public VoucherRedemption(Voucher voucher, User user, Transaction transaction, Integer discountApplied, LocalDateTime redeemedAt) {
-        this.voucher = voucher;
+    public VoucherRedemption(
+            User user,
+            Voucher voucher,
+            Transaction transaction,
+            Integer discountApplied
+    ) {
+        if (user == null || voucher == null || transaction == null) {
+            throw new IllegalArgumentException("User, voucher, and transaction must not be null");
+        }
+
+        if (discountApplied == null || discountApplied < 0) {
+            throw new IllegalArgumentException("Discount applied must be zero or positive");
+        }
+
         this.user = user;
+        this.voucher = voucher;
         this.transaction = transaction;
         this.discountApplied = discountApplied;
-        this.redeemedAt = redeemedAt;
+        this.redeemedAt = LocalDateTime.now();
     }
 
     public Long getId() {
