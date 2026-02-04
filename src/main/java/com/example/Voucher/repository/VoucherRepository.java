@@ -12,6 +12,6 @@ public interface VoucherRepository extends JpaRepository<Voucher,Long> {
 
     //why i write optional here because the
     // - A voucher with the given code may or may not exit then optional will
-    // forces the calller to handle the "not found" case explicitly that will Prevents NUllPointerException
+    // Force the caller to handle the "not found" case explicitly that will Prevent NUllPointerException
     Optional<Voucher> findByCode(String code);
 }

@@ -99,4 +99,22 @@ public class Voucher {
         this.modifiedBy = modifiedBy;
         this.modifiedAt = LocalDateTime.now();
     }
+
+    // avoid using setter for state changes reason and security aspect
+    // this is the domain-driven state change not a setter
+    public void enable(){
+        this.isEnabled = true;
+    }
+
+    public void disable(){
+        this.isEnabled = false;
+    }
+
+    public boolean isEnabled() {
+        return isEnabled;
+    }
+
+    public boolean hasExceededUsageLimit() {
+        return maxGlobalUses !=null && usedCount >= maxGlobalUses;
+    }
 }
