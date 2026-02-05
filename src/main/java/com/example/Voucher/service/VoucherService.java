@@ -1,12 +1,11 @@
 package com.example.Voucher.service;
 
+import com.example.Voucher.dto.VoucherResponseDto;
 import com.example.Voucher.entity.Voucher;
-import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
 
-@Service
 public interface VoucherService {
 
     //create a new voucher
@@ -29,4 +28,8 @@ public interface VoucherService {
 
     // Increment used count after successful redemption
     void incrementVoucherUsage(Long voucherId);
+
+
+
+
 }

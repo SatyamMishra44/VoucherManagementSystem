@@ -65,7 +65,7 @@ public class VoucherRedemptionServiceImpl implements VoucherRedemptionService {
 
         // 6️⃣ Apply percentage discount
         int discount =
-                (totalAmount * voucher.getDiscountPercentage()) / 100;
+                (int) ((totalAmount * voucher.getDiscountPercentage()) / 100);
 
         int finalAmount = totalAmount - discount;
 

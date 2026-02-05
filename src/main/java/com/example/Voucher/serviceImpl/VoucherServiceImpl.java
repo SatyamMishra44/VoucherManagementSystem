@@ -3,10 +3,12 @@ package com.example.Voucher.serviceImpl;
 import com.example.Voucher.entity.Voucher;
 import com.example.Voucher.repository.VoucherRepository;
 import com.example.Voucher.service.VoucherService;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
 
+@Service
 public class VoucherServiceImpl implements VoucherService {
 
     private final VoucherRepository voucherRepository;

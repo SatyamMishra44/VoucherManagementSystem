@@ -29,7 +29,7 @@ public class Voucher {
     @Min(value = 1, message = "Discount percentage must be at least 1")
     @Max(value = 100, message = "Discount percentage cannot exceed 100")
     @Column(nullable = false)
-    private Integer discountPercentage;
+    private double discountPercentage;
 
     @NotNull
     @Column(nullable = false)
@@ -56,14 +56,13 @@ public class Voucher {
     private User modifiedBy;
 
     private LocalDateTime modifiedAt;
-
     // ✅ Required by JPA
     protected Voucher() {
     }
 
     public Voucher(
             String code,
-            Integer discountPercentage,
+            double discountPercentage,
             Integer maxGlobalUses,
             User createdBy
     ) {
@@ -79,7 +78,7 @@ public class Voucher {
     // Getters
     public Long getId() { return id; }
     public String getCode() { return code; }
-    public Integer getDiscountPercentage() { return discountPercentage; }
+    public double getDiscountPercentage() { return discountPercentage; }
     public Integer getMaxGlobalUses() { return maxGlobalUses; }
     public Integer getUsedCount() { return usedCount; }
     public Boolean getIsEnabled() { return isEnabled; }
