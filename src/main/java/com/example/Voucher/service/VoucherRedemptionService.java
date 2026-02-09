@@ -15,4 +15,7 @@ public interface VoucherRedemptionService {
     //fetch redemption history by its Id
     //used for audit,debugging...etc
     VoucherRedemption getRedemptionById(Long redemptionId);
+
+    // fetch redemption history for a user
+    java.util.List<VoucherRedemption> getRedemptionsByUserId(Long userId);
 }

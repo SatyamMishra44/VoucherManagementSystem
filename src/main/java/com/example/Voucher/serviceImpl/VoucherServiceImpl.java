@@ -55,6 +55,15 @@ public class VoucherServiceImpl implements VoucherService {
     }
 
     @Override
+    public List<Voucher> getEligibleVouchers() {
+        return voucherRepository.findAll()
+                .stream()
+                .filter(Voucher::isEnabled)
+                .filter(voucher -> !voucher.hasExceededUsageLimit())
+                .toList();
+    }
+
+    @Override
     public Voucher validateVoucher(String code) {
         Voucher voucher  = voucherRepository.findByCode(code)
                 .orElseThrow(()-> new RuntimeException("Invalid voucher code"));

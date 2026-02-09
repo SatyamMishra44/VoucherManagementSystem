@@ -107,6 +107,24 @@ public class VoucherController {
         return ResponseEntity.ok(vouchers);
     }
 
+    // Get eligible vouchers for a user
+    @GetMapping("/eligible")
+    public ResponseEntity<List<VoucherResponseDto>> getEligibleVouchers(
+            @RequestParam Long userId) {
+
+        if (!userService.existsById(userId)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+
+        List<VoucherResponseDto> vouchers =
+                voucherService.getEligibleVouchers()
+                        .stream()
+                        .map(VoucherResponseDto::fromEntity)
+                        .collect(Collectors.toList());
+
+        return ResponseEntity.ok(vouchers);
+    }
+
     // ===================== TRANSACTION SUPPORT =====================
 
     // Validate voucher before redemption

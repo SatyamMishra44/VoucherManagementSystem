@@ -92,4 +92,12 @@ public class VoucherRedemptionServiceImpl implements VoucherRedemptionService {
         return voucherRedemptionRepository.findById(redemptionId)
                 .orElseThrow(()-> new RuntimeException("Redemption not found"));
     }
+
+    @Override
+    public java.util.List<VoucherRedemption> getRedemptionsByUserId(Long userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("User ID cannot be null");
+        }
+        return voucherRedemptionRepository.findByUserIdOrderByRedeemedAtDesc(userId);
+    }
 }

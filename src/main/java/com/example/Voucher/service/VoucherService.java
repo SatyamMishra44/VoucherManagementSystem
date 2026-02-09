@@ -23,6 +23,9 @@ public interface VoucherService {
     // Get all vouchers
     List<Voucher> getAllVouchers();
 
+    // Get eligible vouchers for a user (basic eligibility only)
+    List<Voucher> getEligibleVouchers();
+
     // Validate voucher before redemption
     Voucher validateVoucher(String code);
 
