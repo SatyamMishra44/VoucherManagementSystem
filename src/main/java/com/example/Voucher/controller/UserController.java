@@ -5,6 +5,7 @@ import com.example.Voucher.dto.UserResponseDto;
 import com.example.Voucher.entity.User;
 import com.example.Voucher.service.UserService;
 import jakarta.validation.Valid;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -14,6 +15,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Tag(name = "2. Users", description = "User management APIs")
 @RestController
 @RequestMapping("/api/v1/users")
 public class UserController {

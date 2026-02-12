@@ -5,6 +5,7 @@ import com.example.Voucher.dto.AuthRegisterRequestDto;
 import com.example.Voucher.dto.AuthResponseDto;
 import com.example.Voucher.service.AuthService;
 import jakarta.validation.Valid;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+@Tag(name = "1. Auth", description = "Authentication endpoints")
 @RestController
 @RequestMapping("/api/v1/auth")
 public class AuthController {

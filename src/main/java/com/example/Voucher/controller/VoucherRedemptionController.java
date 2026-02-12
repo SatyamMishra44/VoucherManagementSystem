@@ -9,6 +9,7 @@ import com.example.Voucher.service.UserService;
 import com.example.Voucher.service.VoucherRedemptionService;
 import com.example.Voucher.service.VoucherService;
 import jakarta.validation.Valid;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -18,6 +19,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+@Tag(name = "4. Redemptions", description = "Voucher redemption and history APIs")
 @RestController
 @RequestMapping("/api/v1/redemptions")
 public class VoucherRedemptionController {
