@@ -5,10 +5,12 @@ import com.example.Voucher.dto.BillResponseDto;
 import com.example.Voucher.entity.Bill;
 import com.example.Voucher.entity.User;
 import com.example.Voucher.service.BillService;
+import com.example.Voucher.service.CurrentUserService;
 import com.example.Voucher.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,17 +23,25 @@ public class BillController {
 
     private final BillService billService;
     private final UserService userService;
+    private final CurrentUserService currentUserService;
 
-    public BillController(BillService billService, UserService userService) {
+    public BillController(
+            BillService billService,
+            UserService userService,
+            CurrentUserService currentUserService
+    ) {
         this.billService = billService;
         this.userService = userService;
+        this.currentUserService = currentUserService;
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyAuthority(@roleProperties.getAdmin(), @roleProperties.getUser())")
     public ResponseEntity<BillResponseDto> createBill(
             @Valid @RequestBody BillCreateRequestDto requestDto) {
 
-        User user = userService.findById(requestDto.getUserId())
+        Long userId = currentUserService.getCurrentUserId();
+        User user = userService.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         Bill bill = new Bill(user, requestDto.getOriginalAmount().intValue());
@@ -41,6 +51,7 @@ public class BillController {
     }
 
     @GetMapping("/{billId}")
+    @PreAuthorize("hasAnyAuthority(@roleProperties.getAdmin(), @roleProperties.getUser())")
     public ResponseEntity<BillResponseDto> getBillById(@PathVariable Long billId) {
         Optional<Bill> billOpt = billService.getBillById(billId);
         return billOpt
@@ -49,7 +60,9 @@ public class BillController {
     }
 
     @GetMapping("/user/{userId}")
+    @PreAuthorize("hasAnyAuthority(@roleProperties.getAdmin(), @roleProperties.getUser())")
     public ResponseEntity<List<BillResponseDto>> getBillsByUserId(@PathVariable Long userId) {
+        currentUserService.assertSelfOrAdmin(userId);
         List<BillResponseDto> bills = billService.getBillsByUserId(userId)
                 .stream()
                 .map(this::toResponse)

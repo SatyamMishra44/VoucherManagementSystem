@@ -7,6 +7,7 @@ import com.example.Voucher.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -24,6 +25,7 @@ public class UserController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority(@roleProperties.getAdmin())")
     public ResponseEntity<UserResponseDto> createUser(
             @Valid @RequestBody UserCreateRequestDto requestDto) {
 
@@ -51,6 +53,7 @@ public class UserController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority(@roleProperties.getAdmin())")
     public ResponseEntity<List<UserResponseDto>> getAllUsers() {
         List<UserResponseDto> users = userService.getAllUsers()
                 .stream()

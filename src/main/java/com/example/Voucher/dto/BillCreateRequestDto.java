@@ -6,12 +6,7 @@ import lombok.Data;
 
 @Data
 public class BillCreateRequestDto {
-
-    @NotNull(message = "User id is required")
-    private Long userId;
-
     @NotNull(message = "Original bill amount is required")
     @Positive(message = "Bill amount must be greater than zero")
     private Double originalAmount;
 }
-

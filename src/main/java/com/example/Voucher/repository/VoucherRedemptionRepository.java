@@ -13,4 +13,5 @@ public interface VoucherRedemptionRepository extends JpaRepository<VoucherRedemp
     boolean existsByVoucherIdAndUserId(Long voucherId,Long userId); // prevent same user from redeeming same voucher again and again
     long countByVoucherId(Long voucherId);// track the voucher usage count
     List<VoucherRedemption> findByUserIdOrderByRedeemedAtDesc(Long userId);
+    List<VoucherRedemption> findByVoucherIdOrderByRedeemedAtDesc(Long voucherId);
 }

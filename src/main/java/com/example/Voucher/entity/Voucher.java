@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -30,6 +31,18 @@ public class Voucher {
     @Max(value = 100, message = "Discount percentage cannot exceed 100")
     @Column(nullable = false)
     private double discountPercentage;
+
+    @NotNull
+    @Column(nullable = false)
+    private Double minBillAmount;
+
+    @NotNull
+    @Column(nullable = false)
+    private LocalDate startDate;
+
+    @NotNull
+    @Column(nullable = false)
+    private LocalDate expiryDate;
 
     @NotNull
     @Column(nullable = false)
@@ -63,11 +76,17 @@ public class Voucher {
     public Voucher(
             String code,
             double discountPercentage,
+            Double minBillAmount,
+            LocalDate startDate,
+            LocalDate expiryDate,
             Integer maxGlobalUses,
             User createdBy
     ) {
         this.code = code;
         this.discountPercentage = discountPercentage;
+        this.minBillAmount = minBillAmount;
+        this.startDate = startDate;
+        this.expiryDate = expiryDate;
         this.maxGlobalUses = maxGlobalUses;
         this.createdBy = createdBy;
         this.createdAt = LocalDateTime.now();
@@ -79,6 +98,9 @@ public class Voucher {
     public Long getId() { return id; }
     public String getCode() { return code; }
     public double getDiscountPercentage() { return discountPercentage; }
+    public Double getMinBillAmount() { return minBillAmount; }
+    public LocalDate getStartDate() { return startDate; }
+    public LocalDate getExpiryDate() { return expiryDate; }
     public Integer getMaxGlobalUses() { return maxGlobalUses; }
     public Integer getUsedCount() { return usedCount; }
     public Boolean getIsEnabled() { return isEnabled; }

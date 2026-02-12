@@ -3,14 +3,17 @@ package com.example.Voucher.controller;
 
 
 import com.example.Voucher.dto.VoucherCreateRequestDto;
+import com.example.Voucher.dto.VoucherRedemptionHistoryDto;
 import com.example.Voucher.dto.VoucherResponseDto;
 import com.example.Voucher.entity.User;
 import com.example.Voucher.entity.Voucher;
+import com.example.Voucher.service.CurrentUserService;
 import com.example.Voucher.service.VoucherService;
-import com.example.Voucher.service.UserService;
+import com.example.Voucher.service.VoucherRedemptionService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,22 +27,28 @@ import java.util.stream.Collectors;
 public class VoucherController {
 
     private final VoucherService voucherService;
-    private final UserService userService;
+    private final VoucherRedemptionService voucherRedemptionService;
+    private final CurrentUserService currentUserService;
 
-    public VoucherController(VoucherService voucherService, UserService userService) {
+    public VoucherController(
+            VoucherService voucherService,
+            VoucherRedemptionService voucherRedemptionService,
+            CurrentUserService currentUserService
+    ) {
         this.voucherService = voucherService;
-        this.userService = userService;
+        this.voucherRedemptionService = voucherRedemptionService;
+        this.currentUserService = currentUserService;
     }
 
     // ===================== ADMIN OPERATIONS =====================
 
     // Create a new voucher (Admin)
+    @PreAuthorize("hasAuthority(@roleProperties.getAdmin())")
     @PostMapping
     public ResponseEntity<VoucherResponseDto> createVoucher(
             @Valid @RequestBody VoucherCreateRequestDto requestDto) {
 
-        User createdBy = userService.findById(requestDto.getUserId())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User createdBy = currentUserService.getCurrentUser();
 
         Voucher voucher = requestDto.toEntity(createdBy);
         Voucher savedVoucher = voucherService.createVoucher(voucher);
@@ -51,6 +60,7 @@ public class VoucherController {
     }
 
     // Enable / Disable voucher (Admin)
+    @PreAuthorize("hasAuthority(@roleProperties.getAdmin())")
     @PatchMapping("/{voucherId}/status")
     public ResponseEntity<VoucherResponseDto> updateVoucherStatus(
             @PathVariable Long voucherId,
@@ -67,6 +77,7 @@ public class VoucherController {
     // ===================== USER OPERATIONS =====================
 
     // Get voucher by ID
+    @PreAuthorize("hasAnyAuthority(@roleProperties.getAdmin(), @roleProperties.getUser())")
     @GetMapping("/{voucherId}")
     public ResponseEntity<VoucherResponseDto> getVoucherById(
             @PathVariable Long voucherId) {
@@ -81,6 +92,7 @@ public class VoucherController {
     }
 
     // Get voucher by code
+    @PreAuthorize("hasAnyAuthority(@roleProperties.getAdmin(), @roleProperties.getUser())")
     @GetMapping("/code/{code}")
     public ResponseEntity<VoucherResponseDto> getVoucherByCode(
             @PathVariable String code) {
@@ -95,6 +107,7 @@ public class VoucherController {
     }
 
     // Get all vouchers (eligible listing)
+    @PreAuthorize("hasAnyAuthority(@roleProperties.getAdmin(), @roleProperties.getUser())")
     @GetMapping
     public ResponseEntity<List<VoucherResponseDto>> getAllVouchers() {
 
@@ -107,17 +120,35 @@ public class VoucherController {
         return ResponseEntity.ok(vouchers);
     }
 
-    // Get eligible vouchers for a user
-    @GetMapping("/eligible")
-    public ResponseEntity<List<VoucherResponseDto>> getEligibleVouchers(
-            @RequestParam Long userId) {
+    // Get redemption history for a voucher
+    @PreAuthorize("hasAnyAuthority(@roleProperties.getAdmin(), @roleProperties.getUser())")
+    @GetMapping("/{voucherId}/redemptions")
+    public ResponseEntity<List<VoucherRedemptionHistoryDto>> getVoucherRedemptions(
+            @PathVariable Long voucherId) {
 
-        if (!userService.existsById(userId)) {
+        Optional<Voucher> voucherOpt = voucherService.getVoucherById(voucherId);
+        if (voucherOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
 
+        List<VoucherRedemptionHistoryDto> history = voucherRedemptionService
+                .getRedemptionsByVoucherId(voucherId)
+                .stream()
+                .map(VoucherRedemptionHistoryDto::fromEntity)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(history);
+    }
+
+    // Get eligible vouchers for a user
+    @PreAuthorize("hasAnyAuthority(@roleProperties.getAdmin(), @roleProperties.getUser())")
+    @GetMapping("/eligible")
+    public ResponseEntity<List<VoucherResponseDto>> getEligibleVouchers(
+            @RequestParam(required = false) Long userId) {
+        Long resolvedUserId = userId != null ? userId : currentUserService.getCurrentUserId();
+        currentUserService.assertSelfOrAdmin(resolvedUserId);
         List<VoucherResponseDto> vouchers =
-                voucherService.getEligibleVouchers()
+                voucherService.getEligibleVouchers(resolvedUserId)
                         .stream()
                         .map(VoucherResponseDto::fromEntity)
                         .collect(Collectors.toList());
@@ -128,6 +159,7 @@ public class VoucherController {
     // ===================== TRANSACTION SUPPORT =====================
 
     // Validate voucher before redemption
+    @PreAuthorize("hasAnyAuthority(@roleProperties.getAdmin(), @roleProperties.getUser())")
     @GetMapping("/validate/{code}")
     public ResponseEntity<VoucherResponseDto> validateVoucher(
             @PathVariable String code) {

@@ -6,10 +6,6 @@ import lombok.Data;
 
 @Data
 public class TransactionCreateRequestDto {
-
-    @NotNull(message = "User id is required")
-    private Long userId;
-
     @NotNull(message = "Bill id is required")
     private Long billId;
 

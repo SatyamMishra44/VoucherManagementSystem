@@ -13,6 +13,8 @@ import com.example.Voucher.service.VoucherRedemptionService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+
 @Service
 @Transactional
 public class VoucherRedemptionServiceImpl implements VoucherRedemptionService {
@@ -46,16 +48,26 @@ public class VoucherRedemptionServiceImpl implements VoucherRedemptionService {
                 .orElseThrow(()-> new RuntimeException("Voucher not found"));
 
 
-        //validate voucher state
+        // Validate eligibility rules before redemption.
         if(!voucher.isEnabled()){
             throw new RuntimeException("voucher is disabled");
+        }
+
+        LocalDate today = LocalDate.now();
+        if (today.isBefore(voucher.getStartDate()) || today.isAfter(voucher.getExpiryDate())) {
+            throw new RuntimeException("voucher is not valid on this date");
+        }
+
+        if (billAmount < voucher.getMinBillAmount()) {
+            throw new RuntimeException("bill amount is below the voucher minimum");
         }
 
         if (voucher.hasExceededUsageLimit()){
             throw new RuntimeException("Voucher usage limit exceeded");
         }
-        //prevent same user redeeming same voucher again and again
-        boolean alreadyRedeemed = voucherRedemptionRepository.existsByVoucherIdAndUserId(voucher.getId(),user.getId());
+
+        boolean alreadyRedeemed = voucherRedemptionRepository
+                .existsByVoucherIdAndUserId(voucher.getId(), user.getId());
         if (alreadyRedeemed) {
             throw new RuntimeException("Voucher already redeemed by this user");
         }
@@ -79,8 +91,11 @@ public class VoucherRedemptionServiceImpl implements VoucherRedemptionService {
                 new VoucherRedemption(user, voucher, transaction,discount);
         voucherRedemptionRepository.save(redemption);
 
-        // 9️⃣ Increment voucher usage
-        voucher.incrementUsage();
+        // Atomic increment prevents concurrent over-redemption.
+        int updated = voucherRepository.incrementUsageIfAvailable(voucher.getId());
+        if (updated == 0) {
+            throw new RuntimeException("Voucher usage limit exceeded");
+        }
 
         return transaction;
 
@@ -99,5 +114,13 @@ public class VoucherRedemptionServiceImpl implements VoucherRedemptionService {
             throw new IllegalArgumentException("User ID cannot be null");
         }
         return voucherRedemptionRepository.findByUserIdOrderByRedeemedAtDesc(userId);
+    }
+
+    @Override
+    public java.util.List<VoucherRedemption> getRedemptionsByVoucherId(Long voucherId) {
+        if (voucherId == null) {
+            throw new IllegalArgumentException("Voucher ID cannot be null");
+        }
+        return voucherRedemptionRepository.findByVoucherIdOrderByRedeemedAtDesc(voucherId);
     }
 }

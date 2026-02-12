@@ -18,6 +18,10 @@ public class VoucherResponseDto {
 
     private Double maxDiscountAmount;
 
+    private LocalDate startDate;
+
+    private LocalDate expiryDate;
+
     private LocalDate createdAt;
 
     private Integer usageLimit;
@@ -33,6 +37,9 @@ public class VoucherResponseDto {
         dto.id = voucher.getId();
         dto.code = voucher.getCode();
         dto.discountPercentage = Double.valueOf(voucher.getDiscountPercentage());
+        dto.minBillAmount = voucher.getMinBillAmount();
+        dto.startDate = voucher.getStartDate();
+        dto.expiryDate = voucher.getExpiryDate();
         dto.usageLimit = voucher.getMaxGlobalUses();
         dto.maxGlobalUses = voucher.getMaxGlobalUses();
         dto.usedCount = voucher.getUsedCount();

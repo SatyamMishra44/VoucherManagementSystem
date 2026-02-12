@@ -4,12 +4,14 @@ import com.example.Voucher.dto.VoucherRedemptionHistoryDto;
 import com.example.Voucher.dto.VoucherRedemptionRequestDto;
 import com.example.Voucher.dto.VoucherRedemptionResponseDto;
 import com.example.Voucher.entity.Voucher;
+import com.example.Voucher.service.CurrentUserService;
 import com.example.Voucher.service.UserService;
 import com.example.Voucher.service.VoucherRedemptionService;
 import com.example.Voucher.service.VoucherService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,24 +25,29 @@ public class VoucherRedemptionController {
     private final VoucherRedemptionService voucherRedemptionService;
     private final VoucherService voucherService;
     private final UserService userService;
+    private final CurrentUserService currentUserService;
 
     public VoucherRedemptionController(
             VoucherRedemptionService voucherRedemptionService,
             VoucherService voucherService,
-            UserService userService
+            UserService userService,
+            CurrentUserService currentUserService
     ) {
         this.voucherRedemptionService = voucherRedemptionService;
         this.voucherService = voucherService;
         this.userService = userService;
+        this.currentUserService = currentUserService;
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyAuthority(@roleProperties.getAdmin(), @roleProperties.getUser())")
     public ResponseEntity<VoucherRedemptionResponseDto> redeemVoucher(
             @Valid @RequestBody VoucherRedemptionRequestDto requestDto) {
 
         try {
+            Long userId = currentUserService.getCurrentUserId();
             voucherRedemptionService.redeemVoucher(
-                    requestDto.getUserId(),
+                    userId,
                     requestDto.getVoucherCode(),
                     requestDto.getBillAmount()
             );
@@ -74,21 +81,14 @@ public class VoucherRedemptionController {
         }
     }
 
-    @GetMapping("/{redemptionId}")
-    public ResponseEntity<VoucherRedemptionHistoryDto> getRedemptionById(
-            @PathVariable Long redemptionId) {
 
-        return ResponseEntity.ok(
-                VoucherRedemptionHistoryDto.fromEntity(
-                        voucherRedemptionService.getRedemptionById(redemptionId)
-                )
-        );
-    }
 
     @GetMapping("/user/{userId}")
+    @PreAuthorize("hasAnyAuthority(@roleProperties.getAdmin(), @roleProperties.getUser())")
     public ResponseEntity<List<VoucherRedemptionHistoryDto>> getRedemptionsByUserId(
             @PathVariable Long userId) {
 
+        currentUserService.assertSelfOrAdmin(userId);
         if (!userService.existsById(userId)) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }

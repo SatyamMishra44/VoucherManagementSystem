@@ -1,0 +1,331 @@
+Annotation Inventory and Deep Notes (VoucherManagementSystem)
+
+Source scan: src/main/java
+Frameworks involved:
+- Spring Boot / Spring MVC / Spring Data JPA
+- Jakarta Persistence (JPA)
+- Jakarta Bean Validation
+- Lombok
+- Java language (@Override)
+
+Below are all annotations found and an engineer-level explanation of what each does, why you use it, and how it behaves in this codebase.
+
+-----------------------------------------------------------------
+@SpringBootApplication (Spring Boot)
+What it does:
+- Composite annotation that includes @Configuration, @EnableAutoConfiguration, and @ComponentScan.
+- Marks the main class as the entry point for Boot autoconfiguration and component scanning.
+Why use it:
+- Enables Spring Boot's opinionated setup, auto-registering beans, web stack, data sources, etc.
+- Simplifies bootstrapping by avoiding manual @Configuration + @ComponentScan.
+How it behaves here:
+- On application start, it scans com.example.Voucher and subpackages for components.
+- Automatically wires your controllers, services, repositories, and configuration.
+Gotchas / senior notes:
+- Component scan root is the package of the annotated class; place it at the top package.
+- If you move it to a lower package, you can accidentally stop detecting beans.
+- Auto-configuration can create beans you did not expect; you can exclude via @SpringBootApplication(exclude=...).
+
+-----------------------------------------------------------------
+@RestController (Spring MVC)
+What it does:
+- Meta-annotation: @Controller + @ResponseBody. Methods return JSON/objects directly.
+Why use it:
+- For REST APIs; no need to annotate every method with @ResponseBody.
+How it behaves here:
+- Used on controllers (VoucherController, UserController, TransactionController, BillController).
+- Methods return ResponseEntity and DTOs; serialization done by Jackson.
+Gotchas:
+- Object mapping uses Jackson defaults (e.g., getters). Missing getters can lead to empty JSON.
+- Always ensure DTOs are serializable without lazy-loading surprises.
+
+-----------------------------------------------------------------
+@RequestMapping (Spring MVC)
+What it does:
+- Maps class or method to a base URI path and optionally HTTP method/consumes/produces.
+Why use it:
+- Define a stable base path for a controller.
+How it behaves here:
+- Used at class level for routes like /api/v1/vouchers, /api/v1/users, etc.
+Gotchas:
+- Class + method mappings combine; be careful about double slashes or path overlap.
+- If you need different consumes/produces, set explicitly to avoid 415/406 issues.
+
+-----------------------------------------------------------------
+@GetMapping / @PostMapping / @PatchMapping (Spring MVC)
+What they do:
+- Shortcuts for @RequestMapping(method = GET/POST/PATCH) with optional path.
+Why use them:
+- Clear, idiomatic mapping for HTTP verbs.
+How they behave here:
+- CRUD endpoints in controllers map to these annotations.
+Gotchas:
+- PATCH semantics: make sure the method is idempotent or document behavior.
+- Spring's default is to accept any content-type for GET; for POST/PATCH, set consumes for stricter behavior.
+
+-----------------------------------------------------------------
+@RequestBody (Spring MVC)
+What it does:
+- Binds HTTP request body (JSON) to a Java object using message converters.
+Why use it:
+- Accept JSON payloads as DTOs for create/update requests.
+How it behaves here:
+- Used with DTOs like VoucherCreateRequestDto, UserCreateRequestDto, etc.
+Gotchas:
+- If JSON fields do not match DTO fields, they bind to null (unless you use validation).
+- For large payloads, consider @Valid + constraints to guard against missing/invalid data.
+
+-----------------------------------------------------------------
+@PathVariable (Spring MVC)
+What it does:
+- Binds a URI path segment to a method parameter.
+Why use it:
+- Access resource identifiers from the URL (e.g., /vouchers/{id}).
+How it behaves here:
+- Used for voucherId, transactionId, userId, code, etc.
+Gotchas:
+- Type conversion errors return 400; handle errors or use @ControllerAdvice.
+
+-----------------------------------------------------------------
+@RequestParam (Spring MVC)
+What it does:
+- Binds query parameters (?enabled=true) to method parameters.@RestController
+@RequestMapping("/api/v1/redemp
+Why use it:
+- Useful for optional filters or small inputs not part of the body.
+How it behaves here:
+- Used for enabling/disabling voucher status.
+Gotchas:
+- If parameter is missing and not optional, you get 400. Use required=false or defaultValue.
+
+-----------------------------------------------------------------
+@Valid (Jakarta Validation)
+What it does:
+- Triggers Bean Validation on method parameters (DTOs) using Jakarta validation constraints.
+Why use it:
+- Enforces request data rules at the API boundary.
+How it behaves here:
+- Used on @RequestBody DTOs in controllers.
+Gotchas:
+- Validation errors throw MethodArgumentNotValidException; create a @ControllerAdvice to format error responses.
+- Nested objects require @Valid on those fields as well.
+
+-----------------------------------------------------------------
+@Service (Spring)
+What it does:
+- Stereotype annotation; marks a class as a service component and a Spring-managed bean.
+Why use it:
+- For business logic classes; enables component scanning and dependency injection.
+How it behaves here:
+- ServiceImpl classes are detected and injected into controllers.
+Gotchas:
+- It's mostly semantic; functional behavior similar to @Component.
+- If you need proxies (for @Transactional), class must be managed by Spring and called from outside.
+
+-----------------------------------------------------------------
+@Transactional (Spring)
+What it does:
+- Starts a transaction boundary around method or class (read/write by default).
+Why use it:
+- Ensures consistency when multiple DB operations must be atomic.
+How it behaves here:
+- Applied at class level in serviceImpl; all public methods are transactional.
+Gotchas:
+- Only works when called through Spring proxy; self-invocation in same class bypasses it.
+- Default propagation is REQUIRED; check for nested transaction behavior.
+- For read-only methods, consider @Transactional(readOnly = true) for optimization.
+
+-----------------------------------------------------------------
+@Repository (Spring)
+What it does:
+- Stereotype for persistence layer; marks interfaces or classes as repositories.
+Why use it:
+- Enables component scanning and exception translation (Spring converts JPA exceptions to DataAccessException).
+How it behaves here:
+- Repository interfaces are picked up by Spring Data JPA.
+Gotchas:
+- Mostly semantic with Spring Data; still good for clarity and exception translation.
+
+-----------------------------------------------------------------
+@Entity (Jakarta Persistence / JPA)
+What it does:
+- Marks a class as a JPA entity mapped to a database table.
+Why use it:
+- Enables ORM mapping so Hibernate can persist and load instances.
+How it behaves here:
+- Used on Voucher, User, Bill, Transaction, VoucherRedemption.
+Gotchas:
+- Entity requires a no-args constructor (protected is fine).
+- Avoid heavy logic in constructors; keep it lean.
+
+-----------------------------------------------------------------
+@Table (JPA)
+What it does:
+- Configures table name and constraints for an entity.
+Why use it:
+- Customize table name or add constraints like unique constraints.
+How it behaves here:
+- Defines table names like "vouchers", "users", etc.
+- Declares unique constraints (e.g., code).
+Gotchas:
+- UniqueConstraint is enforced at DB schema; ensure migrations align.
+
+-----------------------------------------------------------------
+@UniqueConstraint (JPA)
+What it does:
+- Declares a DB-level unique constraint for one or more columns.
+Why use it:
+- Enforce data integrity beyond application-level checks.
+How it behaves here:
+- Voucher code unique; VoucherRedemption unique voucher_id + user_id.
+Gotchas:
+- Violations throw DB constraint exceptions at runtime; handle gracefully.
+
+-----------------------------------------------------------------
+@Id (JPA)
+What it does:
+- Marks the primary key field for an entity.
+Why use it:
+- Required for entity identity and persistence lifecycle.
+How it behaves here:
+- Used for id fields in entities.
+Gotchas:
+- Must be stable; changing IDs can break entity identity and caching.
+
+-----------------------------------------------------------------
+@GeneratedValue (JPA)
+What it does:
+- Specifies how primary key values are generated (IDENTITY in this code).
+Why use it:
+- Let the DB generate primary key values.
+How it behaves here:
+- IDENTITY means DB auto-increment; insert triggers key generation.
+Gotchas:
+- IDENTITY can reduce batch insert performance; SEQUENCE is often better on supported DBs.
+
+-----------------------------------------------------------------
+@Column (JPA)
+What it does:
+- Configures column mapping and constraints (nullable, unique, etc.).
+Why use it:
+- Enforce schema-level constraints and precise mapping.
+How it behaves here:
+- Used to enforce nullable=false and unique=true on fields.
+Gotchas:
+- @NotNull and @Column(nullable=false) target different layers (validation vs DB). Use both for defense in depth.
+
+-----------------------------------------------------------------
+@ManyToOne (JPA)
+What it does:
+- Defines a many-to-one association (many records point to one parent).
+Why use it:
+- Model foreign key relationships (e.g., Voucher -> User).
+How it behaves here:
+- FetchType.LAZY delays loading until accessed.
+Gotchas:
+- Lazy loading outside a transaction can throw LazyInitializationException.
+- Consider DTO mapping inside service layer to avoid leaking entities to controller.
+
+-----------------------------------------------------------------
+@JoinColumn (JPA)
+What it does:
+- Specifies the foreign key column used for association mapping.
+Why use it:
+- Control the column name and nullability for associations.
+How it behaves here:
+- Used for created_by, modified_by, user_id, voucher_id, transaction_id.
+Gotchas:
+- nullable=false enforces FK presence; align with business logic.
+
+-----------------------------------------------------------------
+@Data (Lombok)
+What it does:
+- Generates getters, setters, toString, equals, hashCode, and required constructors.
+Why use it:
+- Reduce boilerplate in DTOs.
+How it behaves here:
+- DTO classes annotated with @Data to generate accessors.
+Gotchas:
+- equals/hashCode include all fields; can be risky for entities (not used here).
+- Be careful with sensitive fields (password) as toString can log them.
+
+-----------------------------------------------------------------
+@Override (Java language)
+What it does:
+- Marks a method as overriding a superclass or interface method.
+Why use it:
+- Compile-time check and clarity.
+How it behaves here:
+- Used in ServiceImpl methods to implement service interfaces.
+Gotchas:
+- None; use it consistently to avoid signature mistakes.
+
+-----------------------------------------------------------------
+Bean Validation Annotations (Jakarta Validation)
+These enforce validation rules on fields when @Valid is triggered (typically on controller input DTOs).
+
+@NotNull
+- What: Value must not be null (but can be empty string).
+- Why: Ensure required numeric/object fields exist.
+- Notes: Does not check for empty/blank; combine with @NotBlank for strings.
+
+@NotBlank
+- What: String must be non-null and trimmed length > 0.
+- Why: Prevent empty inputs like "" or "   ".
+- Notes: Only for CharSequence.
+
+@Pattern
+- What: Enforces a regex on a string.
+- Why: Validate formats like phone numbers or email components.
+- Notes: Use with @Email if you want general email validation plus custom regex.
+
+@Email
+- What: Checks if string is a valid email format (basic validation).
+- Why: Avoid malformed email inputs.
+- Notes: It is not exhaustive; it is a pragmatic validation.
+
+@Size
+- What: Validates size/length of CharSequence, Collection, Map, or Array.
+- Why: Enforce min/max length of voucher codes, etc.
+- Notes: For numeric ranges use @Min/@Max or @DecimalMin/@DecimalMax.
+
+@Positive
+- What: Value must be > 0.
+- Why: Enforce positive amounts like bill or transaction amount.
+- Notes: Use @PositiveOrZero to allow 0.
+
+@PositiveOrZero
+- What: Value must be >= 0.
+- Why: Allow zero amounts without negative values.
+
+@Min / @Max
+- What: Value must be >= min or <= max (inclusive).
+- Why: Enforce integer percentage ranges.
+- Notes: Works for numeric types; inclusive.
+
+@DecimalMin / @DecimalMax
+- What: Similar to @Min/@Max but for decimals, with inclusive flag.
+- Why: Validate double/BigDecimal ranges accurately.
+- Notes: For @DecimalMin(inclusive=false), value must be strictly greater.
+
+Where validation happens in this codebase:
+- DTOs: Request DTOs have field constraints and are validated when controller uses @Valid.
+- Entities: Some fields have validation; however JPA does not automatically validate on persist unless you enable it (Hibernate does by default in many setups). It still helps if you validate entities manually or with @Valid on service methods.
+
+-----------------------------------------------------------------
+Usage cross-reference (short):
+- Controllers: @RestController, @RequestMapping, @PostMapping, @GetMapping, @PatchMapping, @RequestBody, @PathVariable, @RequestParam, @Valid
+- Services: @Service, @Transactional, @Override
+- Repositories: @Repository
+- Entities: @Entity, @Table, @UniqueConstraint, @Id, @GeneratedValue, @Column, @ManyToOne, @JoinColumn, plus validation constraints
+- DTOs: @Data plus validation constraints
+
+-----------------------------------------------------------------
+Practical advice to answer interview-style questions:
+- Know the layer: MVC annotations handle HTTP mapping; JPA annotations handle persistence mapping; Validation annotations guard inputs; Lombok reduces boilerplate.
+- Be able to explain proxy-based behavior for @Transactional and lazy-loading for @ManyToOne.
+- Explain the difference between @NotNull vs @Column(nullable=false): one is validation, one is schema.
+- Mention that validation is triggered by @Valid and can be customized with global exception handling.
+- Clarify that @Repository gives exception translation, and @Service is a semantic stereotype.
+
+End of annotation notes.

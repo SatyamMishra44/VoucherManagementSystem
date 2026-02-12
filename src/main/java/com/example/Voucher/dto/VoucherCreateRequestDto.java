@@ -11,9 +11,6 @@ import java.time.LocalDate;
 
 @Data
 public class VoucherCreateRequestDto {
-    @NotNull(message = "User id is required")
-    private Long userId;
-
     @NotBlank(message = "Voucher code is required")
     @Size(min = 3, max = 20, message = "Voucher code must be between 3 and 20 characters")
     private String code;
@@ -42,12 +39,14 @@ public class VoucherCreateRequestDto {
 
     private Integer maxGlobalUses;
 
-
     public Voucher toEntity(User createdBy) {
         Integer resolvedMaxGlobalUses = this.maxGlobalUses != null ? this.maxGlobalUses : this.usageLimit;
         return new Voucher(
                 this.code,
                 this.discountPercentage,
+                this.minBillAmount,
+                this.startDate,
+                this.expiryDate,
                 resolvedMaxGlobalUses,
                 createdBy
         );

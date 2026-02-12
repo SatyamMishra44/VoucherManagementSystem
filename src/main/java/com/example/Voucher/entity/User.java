@@ -4,9 +4,13 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
+import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
+@Getter
 @Entity
 @Table(name = "users")
 public class User {
@@ -24,8 +28,8 @@ public class User {
     private String lastName;
 
     @NotBlank
-    @Column(nullable = false)
-    private String password;   // should store HASH, not plain text
+    @Column(name = "password_hash", nullable = false)
+    private String passwordHash;   // stores hash, not plain text
 
     @Pattern(
             regexp = "^[0-9]{10}$",
@@ -43,16 +47,27 @@ public class User {
     @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    @Column(nullable = false)
+    private boolean enabled = true;
+
+    @ManyToMany
+    @JoinTable(
+            name = "user_roles",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "role_id")
+    )
+    private Set<Role> roles = new HashSet<>();
+
     // ✅ Required by JPA
     protected User() {
     }
 
     // Optional constructor for manual creation
-    public User(String firstName, String lastName, String password,
+    public User(String firstName, String lastName, String passwordHash,
                 String phoneNumber, String email,LocalDateTime createdAt) {
         this.firstName = firstName;
         this.lastName = lastName;
-        this.password = password;
+        this.passwordHash = passwordHash;
         this.phoneNumber = phoneNumber;
         this.email = email;
         this.createdAt = createdAt;
@@ -63,10 +78,18 @@ public class User {
     public Long getId() { return id; }
     public String getFirstName() { return firstName; }
     public String getLastName() { return lastName; }
-    public String getPassword() { return password; }
+    public String getPasswordHash() { return passwordHash; }
     public String getPhoneNumber() { return phoneNumber; }
     public String getEmail() { return email; }
     public LocalDateTime getCreatedAt() {
         return createdAt;
+    }
+    public boolean isEnabled() { return enabled; }
+    public Set<Role> getRoles() { return roles; }
+
+    public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
+
+    public void addRole(Role role) {
+        this.roles.add(role);
     }
 }
