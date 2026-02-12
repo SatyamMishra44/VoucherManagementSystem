@@ -1,147 +1,283 @@
 # Voucher Management System
 
-Spring Boot REST API for creating users, issuing vouchers, redeeming vouchers against bills, and tracking transactions/redemption history. The project is built around simple voucher eligibility rules (date window, minimum bill, global usage cap, and one-time-per-user redemption).
+Spring Boot REST API for voucher lifecycle, redemption, bills, and transactions with JWT authentication, role-based authorization, Swagger documentation, and MySQL persistence.
 
-## Features
+## What This Project Implements
 
-- User registration and lookup
-- Voucher creation, enable/disable, lookup, and eligibility listing
-- Voucher redemption with validation and audit history
-- Bill and transaction creation with user linkage
-- MySQL persistence with JPA/Hibernate
+- JWT-based stateless authentication (`/api/v1/auth/register`, `/api/v1/auth/login`)
+- Role-based access control (`ADMIN`, `USER`) with method-level authorization
+- Voucher administration (create, enable/disable)
+- Voucher validation and eligibility filtering
+- Voucher redemption flow with audit history
+- Bill and transaction APIs
+- OpenAPI/Swagger UI with grouped tags and ordering
+- Unit and web-layer tests using JUnit 5 + Mockito + MockMvc
 
 ## Tech Stack
 
 - Java 21
-- Spring Boot 3.4.2 (Web, Validation, Data JPA)
+- Spring Boot 3.4.2
+- Spring Web, Spring Validation
+- Spring Security (JWT + `@PreAuthorize`)
+- Spring Data JPA (Hibernate)
 - MySQL
-- Maven
+- springdoc-openapi 2.8.5
+- Maven Wrapper (`./mvnw`)
 
-## Domain Model (High Level)
+## High-Level Architecture
 
-- User: basic identity and contact info
-- Voucher: code, discount percentage, min bill, date window, usage limits
-- VoucherRedemption: per-user redemption audit + discount applied
-- Transaction: pre- and post-discount amounts
-- Bill: bill created for a user (no discount logic in this layer)
+### Layers
 
-## Business Rules (as implemented)
+- `controller`: HTTP endpoints + DTO mapping
+- `service` / `serviceImpl`: business rules and orchestration
+- `repository`: persistence contracts
+- `entity`: JPA domain model
+- `security`: JWT filter, user details, security handlers, RBAC config
+- `config`: OpenAPI metadata
+- `exception`: global exception translation
 
-- Voucher must be enabled
-- Voucher must be within start and expiry dates
-- Bill amount must be >= voucher minBillAmount
-- Voucher has a global usage cap (maxGlobalUses)
-- A user can redeem a given voucher only once
-- Usage count is incremented atomically during redemption
+### Package Layout
 
-## API Overview
+```text
+src/main/java/com/example/Voucher
+├── config
+├── controller
+├── dto
+├── entity
+├── exception
+├── repository
+├── security
+├── service
+└── serviceImpl
+```
 
-Base URL: `http://localhost:8080/api/v1`
+## Domain Model
 
-### Users
+- `User`: first/last name, email, phone, `passwordHash`, enabled flag, roles
+- `Role`: role name (`ADMIN`, `USER`)
+- `Voucher`: code, discount %, min bill amount, start/expiry dates, usage cap, used count, enabled status
+- `VoucherRedemption`: user + voucher + transaction link, discount applied, redeemed timestamp
+- `Transaction`: total amount and final amount
+- `Bill`: bill amount and owner
 
-| Method | Endpoint | Description |
-| --- | --- | --- |
-| POST | `/users` | Create user |
-| GET | `/users` | List all users |
+## Security Model
 
-### Vouchers
+### Authentication
 
-| Method | Endpoint | Description |
-| --- | --- | --- |
-| POST | `/vouchers` | Create voucher |
-| PATCH | `/vouchers/{voucherId}/status?enabled=true|false` | Enable/disable voucher |
-| GET | `/vouchers/{voucherId}` | Get voucher by id |
-| GET | `/vouchers/code/{code}` | Get voucher by code |
-| GET | `/vouchers` | List all vouchers |
-| GET | `/vouchers/eligible?userId=...` | List eligible vouchers for user |
-| GET | `/vouchers/validate/{code}` | Validate voucher (basic rules) |
-| GET | `/vouchers/{voucherId}/redemptions` | Voucher redemption history |
+- Public endpoints:
+  - `/api/v1/auth/**`
+  - Swagger docs/UI routes
+- All other endpoints require a valid `Authorization: Bearer <token>` header.
 
-### Redemptions
+### Authorization
 
-| Method | Endpoint | Description |
-| --- | --- | --- |
-| POST | `/redemptions` | Redeem voucher |
-| GET | `/redemptions/user/{userId}` | User redemption history |
+- `ADMIN` only:
+  - `POST /api/v1/users`
+  - `GET /api/v1/users`
+  - `POST /api/v1/vouchers`
+  - `PATCH /api/v1/vouchers/{voucherId}/status`
+- `ADMIN` or `USER`:
+  - Voucher read/validate/eligible endpoints
+  - Redemption endpoints
+  - Bill endpoints
+  - Transaction endpoints
 
-### Bills
+### Ownership Checks
 
-| Method | Endpoint | Description |
-| --- | --- | --- |
-| POST | `/bills` | Create bill |
-| GET | `/bills/{billId}` | Get bill by id |
-| GET | `/bills/user/{userId}` | List bills for user |
+For user-scoped fetch endpoints, `CurrentUserService.assertSelfOrAdmin(...)` enforces:
 
-### Transactions
+- user can read own data
+- admin can read any user data
 
-| Method | Endpoint | Description |
-| --- | --- | --- |
-| POST | `/transactions` | Create transaction |
-| GET | `/transactions/{transactionId}` | Get transaction by id |
-| GET | `/transactions/user/{userId}` | List transactions for user |
+## Voucher Business Rules (Current Implementation)
 
-## Sample Requests
+### Eligibility and validation
 
-### Create User
+- voucher must exist
+- voucher must be enabled
+- current date must be between `startDate` and `expiryDate`
+- global usage must not exceed `maxGlobalUses`
+- bill amount must satisfy `minBillAmount` during redemption
+- same user cannot redeem the same voucher more than once
+
+### Concurrency and consistency
+
+- DB-level uniqueness: `(voucher_id, user_id)` in `voucher_redemptions`
+- Atomic increment query in `VoucherRepository.incrementUsageIfAvailable(...)`:
+  - increments only when `isEnabled=true` and `usedCount < maxGlobalUses`
+  - returns `0` when limit already reached
+
+This combination prevents over-redemption under concurrent requests.
+
+## API Documentation (Swagger)
+
+- Swagger UI: `http://localhost:8080/swagger-ui/index.html`
+- OpenAPI JSON: `http://localhost:8080/v3/api-docs`
+
+Tag groups are configured for logical sequence:
+
+1. Auth
+2. Users
+3. Vouchers
+4. Redemptions
+5. Bills
+6. Transactions
+
+Related properties:
+
+- `springdoc.swagger-ui.tagsSorter=alpha`
+- `springdoc.swagger-ui.operationsSorter=alpha`
+
+## API Summary
+
+Base path: `http://localhost:8080/api/v1`
+
+### Auth (`permitAll`)
+
+- `POST /auth/register`
+- `POST /auth/login`
+
+### Users (`ADMIN`)
+
+- `POST /users`
+- `GET /users`
+
+### Vouchers (`ADMIN` + `USER` for reads, `ADMIN` for write/admin operations)
+
+- `POST /vouchers` (`ADMIN`)
+- `PATCH /vouchers/{voucherId}/status?enabled=true|false` (`ADMIN`)
+- `GET /vouchers/{voucherId}`
+- `GET /vouchers/code/{code}`
+- `GET /vouchers`
+- `GET /vouchers/eligible?userId={id}` (optional `userId`; defaults to current user)
+- `GET /vouchers/validate/{code}`
+- `GET /vouchers/{voucherId}/redemptions`
+
+### Redemptions (`ADMIN`/`USER`)
+
+- `POST /redemptions`
+- `GET /redemptions/user/{userId}` (self-or-admin)
+
+### Bills (`ADMIN`/`USER`)
+
+- `POST /bills`
+- `GET /bills/{billId}`
+- `GET /bills/user/{userId}` (self-or-admin)
+
+### Transactions (`ADMIN`/`USER`)
+
+- `POST /transactions`
+- `GET /transactions/{transactionId}`
+- `GET /transactions/user/{userId}` (self-or-admin)
+
+## Typical Usage Flow
+
+1. Register user via `/auth/register`
+2. Login via `/auth/login` and get JWT token
+3. Authorize in Swagger UI (or send bearer token in API clients)
+4. Admin creates voucher(s)
+5. User checks eligible vouchers
+6. User redeems voucher
+7. User/admin views redemption history, bills, transactions
+
+## Example Requests
+
+### 1) Register
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/users \
+curl -X POST http://localhost:8080/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{
-    "firstName": "Asha",
-    "lastName": "Verma",
-    "password": "ChangeMe123",
+    "firstName": "John",
+    "lastName": "Doe",
+    "email": "john@example.com",
     "phoneNumber": "9998887776",
-    "email": "asha.verma@example.com"
+    "password": "Password@123"
   }'
 ```
 
-### Create Voucher
+### 2) Login
+
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "john@example.com",
+    "password": "Password@123"
+  }'
+```
+
+### 3) Create Voucher (Admin token)
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/vouchers \
+  -H "Authorization: Bearer <ADMIN_TOKEN>" \
   -H "Content-Type: application/json" \
   -d '{
-    "userId": 1,
     "code": "SAVE10",
     "discountPercentage": 10,
     "minBillAmount": 500,
-    "startDate": "2025-01-01",
-    "expiryDate": "2025-12-31",
+    "startDate": "2026-01-01",
+    "expiryDate": "2026-12-31",
     "usageLimit": 100
   }'
 ```
 
-### Redeem Voucher
+### 4) Redeem Voucher (User token)
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/redemptions \
+  -H "Authorization: Bearer <USER_TOKEN>" \
   -H "Content-Type: application/json" \
   -d '{
     "voucherCode": "SAVE10",
-    "userId": 1,
     "billAmount": 1250
   }'
 ```
 
-### Get Eligible Vouchers
+### 5) Get Voucher By ID (path variable example)
 
 ```bash
-curl "http://localhost:8080/api/v1/vouchers/eligible?userId=1"
+curl -X GET http://localhost:8080/api/v1/vouchers/1 \
+  -H "Authorization: Bearer <TOKEN>"
 ```
 
-## Validation Highlights
+## Validation Rules
 
-- `UserCreateRequestDto`
-  - phoneNumber: exactly 10 digits
-  - email: format and allowed characters
-- `VoucherCreateRequestDto`
-  - code length 3-20
-  - discountPercentage: (0, 100]
-  - usageLimit: positive
-- `VoucherRedemptionRequestDto`
-  - billAmount: positive
+Examples of request validations implemented in DTOs:
+
+- Auth/User:
+  - valid email format
+  - phone must be exactly 10 digits
+  - register password length `8..72`
+- Voucher:
+  - code length `3..20`
+  - discount `(0, 100]`
+  - usage limit must be positive
+- Redemption/Bill/Transaction:
+  - amounts must be positive
+
+Validation failures are returned as HTTP `400` with `ApiError`.
+
+## Error Handling
+
+Custom API error shape:
+
+```json
+{
+  "status": 400,
+  "error": "Bad Request",
+  "message": "Validation failed message",
+  "timestamp": "2026-02-12T00:00:00Z"
+}
+```
+
+Handled centrally for:
+
+- `IllegalArgumentException` -> `400`
+- `MethodArgumentNotValidException` -> `400`
+- authentication failures -> `401`
+- authorization failures -> `403`
 
 ## Configuration
 
@@ -152,45 +288,84 @@ spring.application.name=VoucherMangementSystem
 server.port=8080
 
 spring.datasource.url=jdbc:mysql://localhost:3306/voucher_db
-spring.datasource.username=YOUR_USERNAME
-spring.datasource.password=YOUR_PASSWORD
+spring.datasource.username=root
+spring.datasource.password=your_password
 
 spring.jpa.hibernate.ddl-auto=update
 spring.jpa.show-sql=true
 spring.jpa.properties.hibernate.format_sql=true
 spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect
+
+security.jwt.secret=change-this-secret-to-a-32-byte-minimum-key
+security.jwt.issuer=voucher-management-system
+security.jwt.expiration-seconds=86400
+security.roles.admin=ADMIN
+security.roles.user=USER
 ```
 
-## Run Locally
+## Local Setup
 
-Prereqs:
+Prerequisites:
 
 - Java 21
-- Maven
-- MySQL running with an empty `voucher_db` database
+- MySQL running locally
+- Database created: `voucher_db`
 
 Commands:
 
 ```bash
+./mvnw clean install
 ./mvnw spring-boot:run
 ```
 
-The API starts on `http://localhost:8080`.
+Application URL:
 
-## Notes and Limitations
+- `http://localhost:8080`
 
-- Authentication/authorization is not enabled.
-- Passwords are stored as plain text in `User`; use hashing before production use.
-- Tests are currently disabled (no test dependencies in `pom.xml`).
+## Testing
 
-## Project Structure
+### Run tests
 
+```bash
+./mvnw test
 ```
-src/main/java/com/example/Voucher
-  controller/    REST controllers
-  dto/           Request/response DTOs
-  entity/        JPA entities
-  repository/    Spring Data repositories
-  service/       Service interfaces
-  serviceImpl/   Service implementations
+
+### Clean build + tests
+
+```bash
+./mvnw clean test
 ```
+
+### Where reports are generated
+
+- Surefire reports directory: `target/surefire-reports`
+- JUnit XML files: `target/surefire-reports/TEST-*.xml`
+- Text summaries: `target/surefire-reports/*.txt`
+
+These reports are suitable for sharing with mentors/interview review.
+
+## Current Test Coverage Scope
+
+- Service unit tests:
+  - `VoucherServiceImplTest`
+  - `VoucherRedemptionServiceImplTest`
+  - `BillServiceImplTest`
+  - `TransactionServiceImplTest`
+- Controller web tests:
+  - `AuthControllerTest`
+  - `UserControllerTest`
+
+## Important Notes
+
+- Roles (`ADMIN`, `USER`) are auto-seeded at startup by `RoleSeeder`.
+- Passwords are hashed with `BCryptPasswordEncoder` before persistence.
+- `TransactionCreateRequestDto.billId` exists in DTO but is not currently used in `TransactionController` business flow.
+- `BillService.calculateTotalAmount(...)` currently returns `0.0` placeholder.
+
+## Future Enhancements
+
+- Add integration tests with MySQL Testcontainers
+- Add Flyway/Liquibase migrations
+- Add refresh token/blacklisting strategy
+- Add pagination/filtering for list endpoints
+- Improve audit metadata for update operations
