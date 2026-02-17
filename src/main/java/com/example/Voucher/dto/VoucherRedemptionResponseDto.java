@@ -2,18 +2,19 @@ package com.example.Voucher.dto;
 
 
 import lombok.Data;
+import java.math.BigDecimal;
 
 @Data
 public class VoucherRedemptionResponseDto {
     private String voucherCode;
 
-    private Double originalBillAmount;
+    private BigDecimal originalBillAmount;
 
     private Double discountPercentage;
 
-    private Double discountAmount;
+    private BigDecimal discountAmount;
 
-    private Double finalPayableAmount;
+    private BigDecimal finalPayableAmount;
 
     private Boolean voucherApplied;
 

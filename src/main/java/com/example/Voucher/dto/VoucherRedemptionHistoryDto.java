@@ -3,6 +3,7 @@ package com.example.Voucher.dto;
 import com.example.Voucher.entity.VoucherRedemption;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -11,9 +12,9 @@ public class VoucherRedemptionHistoryDto {
     private Long userId;
     private String voucherCode;
     private Long transactionId;
-    private Integer totalAmount;
-    private Integer finalAmount;
-    private Integer discountApplied;
+    private BigDecimal totalAmount;
+    private BigDecimal finalAmount;
+    private BigDecimal discountApplied;
     private LocalDateTime redeemedAt;
 
     public static VoucherRedemptionHistoryDto fromEntity(VoucherRedemption redemption) {

@@ -2,6 +2,7 @@ package com.example.Voucher.service;
 
 import com.example.Voucher.entity.Bill;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -14,9 +15,11 @@ public interface BillService {
     // Optional will force u to handle the NullPointerException
     Optional<Bill> getBillById(Long billId);
 
+    Optional<Bill> getBillByIdForUser(Long billId, Long userId);
+
     List<Bill> getBillsByUserId(Long userId);
 
 
     //calculate total bill amount before applying the voucher
-    Double calculateTotalAmount(Long billId);
+    BigDecimal calculateTotalAmount(Long billId);
 }

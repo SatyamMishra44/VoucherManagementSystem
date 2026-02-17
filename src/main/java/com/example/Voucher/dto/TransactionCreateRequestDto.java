@@ -3,6 +3,7 @@ package com.example.Voucher.dto;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.Data;
+import java.math.BigDecimal;
 
 @Data
 public class TransactionCreateRequestDto {
@@ -11,7 +12,7 @@ public class TransactionCreateRequestDto {
 
     @NotNull(message = "Transaction amount is required")
     @Positive(message = "Transaction amount must be greater than zero")
-    private Double transactionAmount;
+    private BigDecimal transactionAmount;
 
     private String paymentMethod;
     // Example: UPI, CARD, NET_BANKING

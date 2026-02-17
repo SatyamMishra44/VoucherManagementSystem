@@ -1,7 +1,6 @@
 package com.example.Voucher.serviceImpl;
 
 import com.example.Voucher.entity.Voucher;
-import com.example.Voucher.repository.VoucherRedemptionRepository;
 import com.example.Voucher.repository.VoucherRepository;
 import com.example.Voucher.service.VoucherService;
 import org.springframework.stereotype.Service;
@@ -14,21 +13,27 @@ import java.util.Optional;
 public class VoucherServiceImpl implements VoucherService {
 
     private final VoucherRepository voucherRepository;
-    private final VoucherRedemptionRepository voucherRedemptionRepository;
 
     // use constructor injection to inject the object
     public VoucherServiceImpl(
-            VoucherRepository voucherRepository,
-            VoucherRedemptionRepository voucherRedemptionRepository
+            VoucherRepository voucherRepository
     ) {
         this.voucherRepository = voucherRepository;
-        this.voucherRedemptionRepository = voucherRedemptionRepository;
     }
 
 
     //created a new voucher and saved in repository means DB
     @Override
     public Voucher createVoucher(Voucher voucher) {
+        if (voucher == null) {
+            throw new IllegalArgumentException("Voucher cannot be null");
+        }
+        if (voucher.getAssignedUser() == null) {
+            throw new IllegalArgumentException("Voucher must be assigned to a user");
+        }
+        if (voucher.getStartDate().isAfter(voucher.getExpiryDate())) {
+            throw new IllegalArgumentException("Start date cannot be after expiry date");
+        }
         return voucherRepository.save(voucher);
     }
 
@@ -57,8 +62,26 @@ public class VoucherServiceImpl implements VoucherService {
     }
 
     @Override
+    public Optional<Voucher> getVoucherByIdForUser(Long voucherId, Long userId) {
+        return voucherRepository.findByIdAndAssignedUserId(voucherId, userId);
+    }
+
+    @Override
+    public Optional<Voucher> getVoucherByCodeForUser(String code, Long userId) {
+        return voucherRepository.findByCodeAndAssignedUserId(code, userId);
+    }
+
+    @Override
     public List<Voucher> getAllVouchers() {
         return voucherRepository.findAll(); // return list of all the voucher
+    }
+
+    @Override
+    public List<Voucher> getAllVouchersForUser(Long userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("User ID cannot be null");
+        }
+        return voucherRepository.findByAssignedUserId(userId);
     }
 
     @Override
@@ -67,26 +90,7 @@ public class VoucherServiceImpl implements VoucherService {
             throw new IllegalArgumentException("User ID cannot be null");
         }
         LocalDate today = LocalDate.now();
-        return voucherRepository.findAll()
-                .stream()
-                .filter(Voucher::isEnabled)
-                .filter(voucher -> isWithinDateRange(voucher, today))
-                .filter(voucher -> !voucher.hasExceededUsageLimit())
-                .filter(voucher -> !hasExceededUserLimit(voucher, userId))
-                .toList();
-    }
-
-    private boolean isWithinDateRange(Voucher voucher, LocalDate today) {
-        return (today.isEqual(voucher.getStartDate()) || today.isAfter(voucher.getStartDate()))
-                && (today.isEqual(voucher.getExpiryDate()) || today.isBefore(voucher.getExpiryDate()));
-    }
-
-    private boolean hasExceededUserLimit(Voucher voucher, Long userId) {
-        // Single-use per user: any previous redemption makes it ineligible.
-        return voucherRedemptionRepository.existsByVoucherIdAndUserId(
-                voucher.getId(),
-                userId
-        );
+        return voucherRepository.findEligibleVouchersForUser(userId, today);
     }
 
     @Override
@@ -101,18 +105,9 @@ public class VoucherServiceImpl implements VoucherService {
         if (today.isBefore(voucher.getStartDate()) || today.isAfter(voucher.getExpiryDate())) {
             throw new RuntimeException("voucher is not valid on this date");
         }
-        if(voucher.hasExceededUsageLimit()){
-            throw new RuntimeException("Voucher usage limit exceeded can't be used now");
+        if(voucher.isRedeemed()){
+            throw new RuntimeException("Voucher already redeemed");
         }
         return voucher;
-    }
-
-    @Override
-    public void incrementVoucherUsage(Long voucherId) {
-        Voucher voucher  = voucherRepository.findById(voucherId)
-                .orElseThrow(()-> new RuntimeException("Voucher not found"));
-
-        voucher.incrementUsage();
-        voucherRepository.save(voucher);
     }
 }

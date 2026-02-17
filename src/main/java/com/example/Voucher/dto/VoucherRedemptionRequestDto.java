@@ -11,7 +11,7 @@ public class VoucherRedemptionRequestDto {
     @NotBlank(message = "Voucher code is required")
     private String voucherCode;
 
-    @NotNull(message = "Bill amount is required")
-    @Positive(message = "Bill amount must be greater than zero")
-    private Double billAmount;
+    @NotNull(message = "Bill id is required")
+    @Positive(message = "Bill id must be greater than zero")
+    private Long billId;
 }

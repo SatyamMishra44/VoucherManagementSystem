@@ -1,6 +1,5 @@
 package com.example.Voucher.service;
 
-import com.example.Voucher.dto.VoucherResponseDto;
 import com.example.Voucher.entity.Voucher;
 
 import java.util.List;
@@ -20,19 +19,19 @@ public interface VoucherService {
 
     Optional<Voucher> getVoucherByCode(String code);
 
+    Optional<Voucher> getVoucherByIdForUser(Long voucherId, Long userId);
+
+    Optional<Voucher> getVoucherByCodeForUser(String code, Long userId);
+
     // Get all vouchers
     List<Voucher> getAllVouchers();
+
+    List<Voucher> getAllVouchersForUser(Long userId);
 
     // Get eligible vouchers for a user (based on voucher rules and user usage)
     List<Voucher> getEligibleVouchers(Long userId);
 
     // Validate voucher before redemption
     Voucher validateVoucher(String code);
-
-    // Increment used count after successful redemption
-    void incrementVoucherUsage(Long voucherId);
-
-
-
 
 }

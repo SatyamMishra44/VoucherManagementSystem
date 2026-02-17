@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-@Tag(name = "5. Bills", description = "Billing APIs")
+@Tag(name = "4. Bills", description = "Billing APIs")
 @RestController
 @RequestMapping("/api/v1/bills")
 public class BillController {
@@ -38,15 +38,14 @@ public class BillController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority(@roleProperties.getAdmin(), @roleProperties.getUser())")
+    @PreAuthorize("hasAuthority(@roleProperties.getAdmin())")
     public ResponseEntity<BillResponseDto> createBill(
             @Valid @RequestBody BillCreateRequestDto requestDto) {
 
-        Long userId = currentUserService.getCurrentUserId();
-        User user = userService.findById(userId)
+        User user = userService.findById(requestDto.getUserId())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        Bill bill = new Bill(user, requestDto.getOriginalAmount().intValue());
+        Bill bill = new Bill(user, requestDto.getTotalAmount());
         Bill savedBill = billService.createBill(bill);
 
         return new ResponseEntity<>(toResponse(savedBill), HttpStatus.CREATED);
@@ -55,7 +54,10 @@ public class BillController {
     @GetMapping("/{billId}")
     @PreAuthorize("hasAnyAuthority(@roleProperties.getAdmin(), @roleProperties.getUser())")
     public ResponseEntity<BillResponseDto> getBillById(@PathVariable Long billId) {
-        Optional<Bill> billOpt = billService.getBillById(billId);
+        boolean isAdmin = currentUserService.isCurrentUserAdmin();
+        Optional<Bill> billOpt = isAdmin
+                ? billService.getBillById(billId)
+                : billService.getBillByIdForUser(billId, currentUserService.getCurrentUserId());
         return billOpt
                 .map(bill -> ResponseEntity.ok(toResponse(bill)))
                 .orElseGet(() -> ResponseEntity.notFound().build());
@@ -76,10 +78,7 @@ public class BillController {
         BillResponseDto dto = new BillResponseDto();
         dto.setBillId(bill.getId());
         dto.setUserId(bill.getUser().getId());
-        dto.setOriginalAmount(bill.getTotalAmount().doubleValue());
-        dto.setDiscountAmount(0.0);
-        dto.setFinalPayableAmount(bill.getTotalAmount().doubleValue());
-        dto.setBillStatus("CREATED");
+        dto.setTotalAmount(bill.getTotalAmount());
         dto.setCreatedAt(bill.getCreatedAt());
         return dto;
     }

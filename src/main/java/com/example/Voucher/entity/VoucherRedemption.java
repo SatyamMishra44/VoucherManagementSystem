@@ -4,13 +4,15 @@ package com.example.Voucher.entity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(
         name = "voucher_redemptions",
         uniqueConstraints = {
-                @UniqueConstraint(columnNames = {"voucher_id", "user_id"})
+                @UniqueConstraint(columnNames = {"voucher_id"})
         }
 )
 public class VoucherRedemption {
@@ -32,8 +34,8 @@ public class VoucherRedemption {
     private Transaction transaction;
 
     @NotNull
-    @Column(nullable = false)
-    private Integer discountApplied;
+    @Column(nullable = false, precision = 19, scale = 2)
+    private BigDecimal discountApplied;
 
     @Column(nullable = false)
     private LocalDateTime redeemedAt;
@@ -45,20 +47,20 @@ public class VoucherRedemption {
             User user,
             Voucher voucher,
             Transaction transaction,
-            Integer discountApplied
+            BigDecimal discountApplied
     ) {
         if (user == null || voucher == null || transaction == null) {
             throw new IllegalArgumentException("User, voucher, and transaction must not be null");
         }
 
-        if (discountApplied == null || discountApplied < 0) {
+        if (discountApplied == null || discountApplied.signum() < 0) {
             throw new IllegalArgumentException("Discount applied must be zero or positive");
         }
 
         this.user = user;
         this.voucher = voucher;
         this.transaction = transaction;
-        this.discountApplied = discountApplied;
+        this.discountApplied = discountApplied.setScale(2, RoundingMode.HALF_UP);
         this.redeemedAt = LocalDateTime.now();
     }
 
@@ -78,7 +80,7 @@ public class VoucherRedemption {
         return transaction;
     }
 
-    public @NotNull Integer getDiscountApplied() {
+    public @NotNull BigDecimal getDiscountApplied() {
         return discountApplied;
     }
 

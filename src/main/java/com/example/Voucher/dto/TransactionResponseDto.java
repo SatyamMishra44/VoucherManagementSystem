@@ -2,6 +2,7 @@ package com.example.Voucher.dto;
 
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -13,7 +14,7 @@ public class TransactionResponseDto {
 
     private Long billId;
 
-    private Double transactionAmount;
+    private BigDecimal transactionAmount;
 
     private String paymentMethod;
 

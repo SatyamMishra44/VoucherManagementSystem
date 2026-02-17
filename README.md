@@ -72,7 +72,6 @@ src/main/java/com/example/Voucher
 ### Authorization
 
 - `ADMIN` only:
-  - `POST /api/v1/users`
   - `GET /api/v1/users`
   - `POST /api/v1/vouchers`
   - `PATCH /api/v1/vouchers/{voucherId}/status`
@@ -139,7 +138,6 @@ Base path: `http://localhost:8080/api/v1`
 
 ### Users (`ADMIN`)
 
-- `POST /users`
 - `GET /users`
 
 ### Vouchers (`ADMIN` + `USER` for reads, `ADMIN` for write/admin operations)

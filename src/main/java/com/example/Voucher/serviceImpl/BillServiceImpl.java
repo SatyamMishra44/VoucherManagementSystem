@@ -6,6 +6,7 @@ import com.example.Voucher.service.BillService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -34,7 +35,7 @@ public class BillServiceImpl implements BillService {
             throw new IllegalArgumentException("Bill must be associated with a user");
         }
 
-        if (bill.getTotalAmount() == null || bill.getTotalAmount() <= 0) {
+        if (bill.getTotalAmount() == null || bill.getTotalAmount().compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Bill amount must be greater than zero");
         }
 
@@ -54,6 +55,17 @@ public class BillServiceImpl implements BillService {
         return billRepository.findById(billId);
     }
 
+    @Override
+    public Optional<Bill> getBillByIdForUser(Long billId, Long userId) {
+        if (billId == null) {
+            throw new IllegalArgumentException("Bill ID cannot be null");
+        }
+        if (userId == null) {
+            throw new IllegalArgumentException("User ID cannot be null");
+        }
+        return billRepository.findByIdAndUserId(billId, userId);
+    }
+
     /**
      * Fetch all bills of a user
      */
@@ -71,7 +83,9 @@ public class BillServiceImpl implements BillService {
 
 
     @Override
-    public Double calculateTotalAmount(Long billId) {
-        return 0.0;
+    public BigDecimal calculateTotalAmount(Long billId) {
+        return getBillById(billId)
+                .map(Bill::getTotalAmount)
+                .orElseThrow(() -> new RuntimeException("Bill not found"));
     }
 }

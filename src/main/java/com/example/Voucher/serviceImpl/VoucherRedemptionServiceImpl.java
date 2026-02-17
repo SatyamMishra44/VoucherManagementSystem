@@ -1,10 +1,12 @@
 package com.example.Voucher.serviceImpl;
 
 
+import com.example.Voucher.entity.Bill;
 import com.example.Voucher.entity.Transaction;
 import com.example.Voucher.entity.User;
 import com.example.Voucher.entity.Voucher;
 import com.example.Voucher.entity.VoucherRedemption;
+import com.example.Voucher.repository.BillRepository;
 import com.example.Voucher.repository.TransactionRepository;
 import com.example.Voucher.repository.UserRepository;
 import com.example.Voucher.repository.VoucherRedemptionRepository;
@@ -13,6 +15,8 @@ import com.example.Voucher.service.VoucherRedemptionService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 
 @Service
@@ -23,6 +27,7 @@ public class VoucherRedemptionServiceImpl implements VoucherRedemptionService {
     private final VoucherRedemptionRepository voucherRedemptionRepository;
     private final TransactionRepository transactionRepository;
     private final UserRepository userRepository;
+    private final BillRepository billRepository;
 
 
     // Constructor injection to inject the bean
@@ -30,21 +35,27 @@ public class VoucherRedemptionServiceImpl implements VoucherRedemptionService {
             VoucherRepository voucherRepository,
             VoucherRedemptionRepository voucherRedemptionRepository,
             TransactionRepository transactionRepository,
-            UserRepository userRepository
+            UserRepository userRepository,
+            BillRepository billRepository
     ){
         this.voucherRepository = voucherRepository;
         this.voucherRedemptionRepository = voucherRedemptionRepository;
         this.transactionRepository = transactionRepository;
         this.userRepository = userRepository;
+        this.billRepository = billRepository;
     }
     @Override
-    public Transaction redeemVoucher(Long userId, String voucherCode, Double billAmount) {
+    public Transaction redeemVoucher(Long userId, String voucherCode, Long billId) {
         // Fetch the user
         User user = userRepository.findById(userId)
                 .orElseThrow(()-> new RuntimeException("User not found"));
 
-        // fetch the voucher by their voucher code
-        Voucher voucher = voucherRepository.findByCode(voucherCode)
+        // Fetch bill and enforce ownership from DB (never trust client amount).
+        Bill bill = billRepository.findByIdAndUserId(billId, userId)
+                .orElseThrow(() -> new RuntimeException("Bill not found"));
+
+        // Fetch voucher scoped to assigned user and lock row for race-safe redemption.
+        Voucher voucher = voucherRepository.findByCodeAndAssignedUserIdForUpdate(voucherCode, userId)
                 .orElseThrow(()-> new RuntimeException("Voucher not found"));
 
 
@@ -58,32 +69,23 @@ public class VoucherRedemptionServiceImpl implements VoucherRedemptionService {
             throw new RuntimeException("voucher is not valid on this date");
         }
 
-        if (billAmount < voucher.getMinBillAmount()) {
+        if (bill.getTotalAmount().compareTo(voucher.getMinBillAmount()) < 0) {
             throw new RuntimeException("bill amount is below the voucher minimum");
         }
 
-        if (voucher.hasExceededUsageLimit()){
-            throw new RuntimeException("Voucher usage limit exceeded");
+        if (voucher.isRedeemed()) {
+            throw new RuntimeException("Voucher already redeemed");
         }
 
-        boolean alreadyRedeemed = voucherRedemptionRepository
-                .existsByVoucherIdAndUserId(voucher.getId(), user.getId());
-        if (alreadyRedeemed) {
-            throw new RuntimeException("Voucher already redeemed by this user");
-        }
-
-        // 5️⃣ Convert bill amount to smallest currency unit
-        int totalAmount = billAmount.intValue();
-
-        // 6️⃣ Apply percentage discount
-        int discount =
-                (int) ((totalAmount * voucher.getDiscountPercentage()) / 100);
-
-        int finalAmount = totalAmount - discount;
+        BigDecimal totalAmount = bill.getTotalAmount();
+        BigDecimal discountRate = BigDecimal.valueOf(voucher.getDiscountPercentage())
+                .divide(BigDecimal.valueOf(100), 6, RoundingMode.HALF_UP);
+        BigDecimal discount = totalAmount.multiply(discountRate).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal finalAmount = totalAmount.subtract(discount).setScale(2, RoundingMode.HALF_UP);
 
         // 7️⃣ Create transaction
         Transaction transaction =
-                new Transaction(user, totalAmount, finalAmount);
+                new Transaction(user, bill, totalAmount, finalAmount);
         transactionRepository.save(transaction);
 
         // 8️⃣ Create redemption audit record
@@ -91,11 +93,8 @@ public class VoucherRedemptionServiceImpl implements VoucherRedemptionService {
                 new VoucherRedemption(user, voucher, transaction,discount);
         voucherRedemptionRepository.save(redemption);
 
-        // Atomic increment prevents concurrent over-redemption.
-        int updated = voucherRepository.incrementUsageIfAvailable(voucher.getId());
-        if (updated == 0) {
-            throw new RuntimeException("Voucher usage limit exceeded");
-        }
+        voucher.markRedeemed(bill);
+        voucherRepository.save(voucher);
 
         return transaction;
 

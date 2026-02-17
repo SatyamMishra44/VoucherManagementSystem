@@ -32,6 +32,15 @@ public class CurrentUserService {
         return getCurrentUser().getId();
     }
 
+    public boolean isCurrentUserAdmin() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            throw new AccessDeniedException("Authentication required");
+        }
+        return auth.getAuthorities().stream()
+                .anyMatch(a -> Objects.equals(a.getAuthority(), roleProperties.getAdmin()));
+    }
+
     public void assertSelfOrAdmin(Long userId) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated()) {

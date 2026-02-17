@@ -8,7 +8,7 @@ public interface VoucherRedemptionService {
     // this method represents the entire voucher redemption flow
     Transaction redeemVoucher(Long userId,
                               String voucherCode,
-                              Double billAmount
+                              Long billId
     );
 
 

@@ -13,15 +13,15 @@ import org.springframework.context.annotation.Configuration;
         info = @Info(
                 title = "Voucher Management System API",
                 version = "v1",
-                description = "API documentation for voucher, redemption, billing, and transactions."
+                description = "API documentation for voucher,billing,redemption and transactions."
         ),
         security = @SecurityRequirement(name = "bearerAuth"),
         tags = {
                 @Tag(name = "1. Auth", description = "Register and login endpoints"),
                 @Tag(name = "2. Users", description = "User management APIs"),
                 @Tag(name = "3. Vouchers", description = "Voucher management and eligibility APIs"),
-                @Tag(name = "4. Redemptions", description = "Voucher redemption and history APIs"),
-                @Tag(name = "5. Bills", description = "Billing APIs"),
+                @Tag(name = "4. Bills", description = "Billing APIs"),
+                @Tag(name = "5. Redemptions", description = "Voucher redemption and history APIs"),
                 @Tag(name = "6. Transactions", description = "Transaction APIs")
         }
 )

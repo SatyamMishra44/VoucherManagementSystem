@@ -6,6 +6,7 @@ import com.example.Voucher.service.TransactionService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -27,15 +28,15 @@ public class TransactionServiceImpl implements TransactionService {
             throw new IllegalArgumentException("Transaction cannot be null");
         }
 
-        if (transaction.getTotalAmount() <= 0) {
+        if (transaction.getTotalAmount().compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Total amount must be greater than zero");
         }
 
-        if (transaction.getFinalAmount() < 0) {
+        if (transaction.getFinalAmount().compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException("Final amount cannot be negative");
         }
 
-        if (transaction.getFinalAmount() > transaction.getTotalAmount()) {
+        if (transaction.getFinalAmount().compareTo(transaction.getTotalAmount()) > 0) {
             throw new IllegalArgumentException("Final amount cannot exceed total amount");
         }
 

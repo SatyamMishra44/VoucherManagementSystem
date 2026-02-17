@@ -1,12 +1,11 @@
 package com.example.Voucher.dto;
 
-
-
 import com.example.Voucher.entity.User;
 import com.example.Voucher.entity.Voucher;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Data
@@ -22,7 +21,7 @@ public class VoucherCreateRequestDto {
 
     @NotNull(message = "Minimum bill amount is required")
     @PositiveOrZero(message = "Minimum bill amount cannot be negative")
-    private Double minBillAmount;
+    private BigDecimal minBillAmount;
 
     //@Positive(message = "Maximum discount amount must be positive")
     //private Double maxDiscountAmount; // optional cap
@@ -33,21 +32,18 @@ public class VoucherCreateRequestDto {
     @NotNull(message = "Expiry date is required")
     private LocalDate expiryDate;
 
-    @NotNull(message = "Usage limit is required")
-    @Positive(message = "Usage limit must be greater than zero")
-    private Integer usageLimit;
+    @NotNull(message = "Assigned user id is required")
+    @Positive(message = "Assigned user id must be greater than zero")
+    private Long userId;
 
-    private Integer maxGlobalUses;
-
-    public Voucher toEntity(User createdBy) {
-        Integer resolvedMaxGlobalUses = this.maxGlobalUses != null ? this.maxGlobalUses : this.usageLimit;
+    public Voucher toEntity(User createdBy, User assignedUser) {
         return new Voucher(
                 this.code,
                 this.discountPercentage,
                 this.minBillAmount,
                 this.startDate,
                 this.expiryDate,
-                resolvedMaxGlobalUses,
+                assignedUser,
                 createdBy
         );
     }

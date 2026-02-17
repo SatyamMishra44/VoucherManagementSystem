@@ -3,6 +3,8 @@ package com.example.Voucher.entity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 
 @Entity
@@ -19,8 +21,8 @@ public class Bill {
     private User user;
 
     @NotNull
-    @Column(nullable = false)
-    private Integer totalAmount;
+    @Column(nullable = false, precision = 19, scale = 2)
+    private BigDecimal totalAmount;
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
@@ -29,9 +31,9 @@ public class Bill {
     protected Bill() {
     }
 
-    public Bill(User user, Integer totalAmount) {
+    public Bill(User user, BigDecimal totalAmount) {
         this.user = user;
-        this.totalAmount = totalAmount;
+        this.totalAmount = totalAmount.setScale(2, RoundingMode.HALF_UP);
         this.createdAt = LocalDateTime.now();
     }
 
@@ -44,7 +46,7 @@ public class Bill {
         return user;
     }
 
-    public Integer getTotalAmount() {
+    public BigDecimal getTotalAmount() {
         return totalAmount;
     }
 

@@ -4,6 +4,8 @@ package com.example.Voucher.entity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 
 @Entity
@@ -18,13 +20,17 @@ public class Transaction {
     @JoinColumn(name = "user_id",nullable = false)
     private User user;
 
-    @NotNull
-    @Column(nullable = false)
-    private Integer totalAmount; // before applying the voucher
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "bill_id", nullable = false)
+    private Bill bill;
 
     @NotNull
-    @Column(nullable = false)
-    private  Integer finalAmount;  // after applying the voucher
+    @Column(nullable = false, precision = 19, scale = 2)
+    private BigDecimal totalAmount; // before applying the voucher
+
+    @NotNull
+    @Column(nullable = false, precision = 19, scale = 2)
+    private BigDecimal finalAmount;  // after applying the voucher
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
@@ -32,10 +38,11 @@ public class Transaction {
     protected Transaction(){
         // this is no-args constructor only needed for the JPA
     }
-    public Transaction(User user,Integer totalAmount, Integer finalAmount){
+    public Transaction(User user, Bill bill, BigDecimal totalAmount, BigDecimal finalAmount){
         this.user = user;
-        this.totalAmount = totalAmount;
-        this.finalAmount = finalAmount;
+        this.bill = bill;
+        this.totalAmount = totalAmount.setScale(2, RoundingMode.HALF_UP);
+        this.finalAmount = finalAmount.setScale(2, RoundingMode.HALF_UP);
         this.createdAt = LocalDateTime.now();
     }
 
@@ -45,10 +52,13 @@ public class Transaction {
     public User getUser(){
         return user;
     }
-    public  Integer getTotalAmount(){
+    public Bill getBill() {
+        return bill;
+    }
+    public BigDecimal getTotalAmount(){
         return totalAmount;
     }
-    public Integer getFinalAmount(){
+    public BigDecimal getFinalAmount(){
         return finalAmount;
     }
     public LocalDateTime getCreatedAt(){
