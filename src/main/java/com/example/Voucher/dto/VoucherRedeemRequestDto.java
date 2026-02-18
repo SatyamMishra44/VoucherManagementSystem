@@ -13,7 +13,6 @@ public class VoucherRedeemRequestDto {
     @Positive(message = "User voucher id must be greater than zero")
     private Long userVoucherId;
 
-    @NotNull(message = "Bill amount is required")
     @Positive(message = "Bill amount must be greater than zero")
     private BigDecimal billAmount;
 
