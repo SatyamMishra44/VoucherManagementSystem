@@ -8,6 +8,7 @@ import com.example.Voucher.service.BillService;
 import com.example.Voucher.service.CurrentUserService;
 import com.example.Voucher.service.UserService;
 import jakarta.validation.Valid;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,7 +19,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-@Tag(name = "4. Bills", description = "Billing APIs")
+@Tag(name = "5. Bills", description = "Billing APIs")
 @RestController
 @RequestMapping("/api/v1/bills")
 public class BillController {
@@ -39,6 +40,10 @@ public class BillController {
 
     @PostMapping
     @PreAuthorize("hasAuthority(@roleProperties.getAdmin())")
+    @Operation(
+            summary = "Admin: Create Bill",
+            description = "Create a bill record for a user. This bill can later be used during redemption."
+    )
     public ResponseEntity<BillResponseDto> createBill(
             @Valid @RequestBody BillCreateRequestDto requestDto) {
 
@@ -53,6 +58,10 @@ public class BillController {
 
     @GetMapping("/{billId}")
     @PreAuthorize("hasAnyAuthority(@roleProperties.getAdmin(), @roleProperties.getUser())")
+    @Operation(
+            summary = "View Bill By Id",
+            description = "Admin can view any bill. User can view only own bill."
+    )
     public ResponseEntity<BillResponseDto> getBillById(@PathVariable Long billId) {
         boolean isAdmin = currentUserService.isCurrentUserAdmin();
         Optional<Bill> billOpt = isAdmin
@@ -65,6 +74,10 @@ public class BillController {
 
     @GetMapping("/user/{userId}")
     @PreAuthorize("hasAnyAuthority(@roleProperties.getAdmin(), @roleProperties.getUser())")
+    @Operation(
+            summary = "View Bills By User",
+            description = "Get all bills for one user. Users can view only their own bills."
+    )
     public ResponseEntity<List<BillResponseDto>> getBillsByUserId(@PathVariable Long userId) {
         currentUserService.assertSelfOrAdmin(userId);
         List<BillResponseDto> bills = billService.getBillsByUserId(userId)

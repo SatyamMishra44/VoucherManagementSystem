@@ -4,6 +4,7 @@ import com.example.Voucher.dto.TransactionResponseDto;
 import com.example.Voucher.entity.Transaction;
 import com.example.Voucher.service.CurrentUserService;
 import com.example.Voucher.service.TransactionService;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -30,6 +31,10 @@ public class TransactionController {
 
     @GetMapping("/user/{userId}")
     @PreAuthorize("hasAnyAuthority(@roleProperties.getAdmin(), @roleProperties.getUser())")
+    @Operation(
+            summary = "View Transactions By User",
+            description = "Get payment/settlement history for a user. Users can view only their own transactions."
+    )
     public ResponseEntity<List<TransactionResponseDto>> getTransactionsByUserId(@PathVariable Long userId) {
         currentUserService.assertSelfOrAdmin(userId);
         List<TransactionResponseDto> transactions = transactionService.getTransactionByUserId(userId)

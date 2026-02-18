@@ -5,6 +5,7 @@ import com.example.Voucher.dto.AuthRegisterRequestDto;
 import com.example.Voucher.dto.AuthResponseDto;
 import com.example.Voucher.service.AuthService;
 import jakarta.validation.Valid;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -25,12 +26,20 @@ public class AuthController {
     }
 
     @PostMapping("/register")
+    @Operation(
+            summary = "Step 1: Register (Sign Up)",
+            description = "Create a new account. Use this once before login."
+    )
     public ResponseEntity<Void> register(@Valid @RequestBody AuthRegisterRequestDto request) {
         authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
     @PostMapping("/login")
+    @Operation(
+            summary = "Step 2: Login",
+            description = "Login with your email and password to get a Bearer token for all secured APIs."
+    )
     public ResponseEntity<AuthResponseDto> login(@Valid @RequestBody AuthLoginRequestDto request) {
         return ResponseEntity.ok(authService.login(request));
     }

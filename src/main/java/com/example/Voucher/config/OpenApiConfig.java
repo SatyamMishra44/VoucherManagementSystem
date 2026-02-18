@@ -13,16 +13,16 @@ import org.springframework.context.annotation.Configuration;
         info = @Info(
                 title = "Voucher Management System API",
                 version = "v1",
-                description = "API documentation for voucher,billing,redemption and transactions."
+                description = "Simple flow: create account, login, admin creates voucher templates, users buy vouchers, users redeem balance, and history is available for audit."
         ),
         security = @SecurityRequirement(name = "bearerAuth"),
         tags = {
-                @Tag(name = "1. Auth", description = "Register and login endpoints"),
-                @Tag(name = "2. Users", description = "User management APIs"),
-                @Tag(name = "3. Vouchers", description = "Voucher management and eligibility APIs"),
-                @Tag(name = "4. Bills", description = "Billing APIs"),
-                @Tag(name = "5. Redemptions", description = "Voucher redemption and history APIs"),
-                @Tag(name = "6. Transactions", description = "Transaction APIs")
+                @Tag(name = "1. Auth", description = "Step 1-2: Sign up and login to get your access token."),
+                @Tag(name = "2. Users", description = "Admin-only user list."),
+                @Tag(name = "3. Admin Vouchers", description = "Step 3: Admin creates and enables/disables voucher templates."),
+                @Tag(name = "4. User Vouchers", description = "Step 4-7: User sees templates, purchases vouchers, redeems balance, and checks redemption history."),
+                @Tag(name = "5. Bills", description = "Optional billing records used for redemption and reporting."),
+                @Tag(name = "6. Transactions", description = "Payment/settlement records created during voucher redemption with bills.")
         }
 )
 @SecurityScheme(

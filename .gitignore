@@ -1,41 +1,53 @@
-HELP.md
+# Build output
 target/
-.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
+build/
+out/
 
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
+# Local Maven repository/cache placed inside project
+.m2repo/
 
-### IntelliJ IDEA ###
-.idea
-*.iws
+# Logs and runtime artifacts
+*.log
+logs/
+*.pid
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IntelliJ IDEA
+.idea/
 *.iml
+*.iws
 *.ipr
 
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
-/suggested/suggested/suggested
-### VS Code ###
+# Eclipse / STS
+.classpath
+.project
+.settings/
+.apt_generated/
+.factorypath
+.springBeans
+.sts4-cache/
+
+# NetBeans
+nbproject/private/
+nbbuild/
+nbdist/
+.nb-gradle/
+
+# VS Code
 .vscode/
 
-# Local secrets
+# Environment and local secrets
 .env
 .env.*
 !.env.example
 src/main/resources/application-secrets.properties
-src/main/resources/application-secrets.properties.example
 config/application-secrets.properties
+
+# Optional local Spring profile override
+src/main/resources/application-local.properties
+
+# Optional generated project helper file
+HELP.md
