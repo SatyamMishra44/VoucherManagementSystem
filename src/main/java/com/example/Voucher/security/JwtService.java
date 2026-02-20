@@ -7,6 +7,7 @@ import java.security.MessageDigest;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
+import java.util.UUID;
 import javax.crypto.SecretKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +19,9 @@ public class JwtService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JwtService.class);
     private static final int HS256_MIN_KEY_BYTES = 32;
+    private static final String TOKEN_TYPE_CLAIM = "token_type";
+    private static final String ACCESS_TOKEN_TYPE = "access";
+    private static final String REFRESH_TOKEN_TYPE = "refresh";
 
     private final JwtProperties properties;
     private final SecretKey signingKey;
@@ -27,13 +31,23 @@ public class JwtService {
         this.signingKey = Keys.hmacShaKeyFor(normalizeSecret(properties.getSecret()));
     }
 
-    public String generateToken(UserDetails userDetails) {
+    public String generateAccessToken(UserDetails userDetails) {
+        return generateToken(userDetails, properties.getAccessExpirationSeconds(), ACCESS_TOKEN_TYPE);
+    }
+
+    public String generateRefreshToken(UserDetails userDetails) {
+        return generateToken(userDetails, properties.getRefreshExpirationSeconds(), REFRESH_TOKEN_TYPE);
+    }
+
+    private String generateToken(UserDetails userDetails, long expirationSeconds, String tokenType) {
         Instant now = Instant.now();
-        Instant expiry = now.plusSeconds(properties.getExpirationSeconds());
+        Instant expiry = now.plusSeconds(expirationSeconds);
 
         return Jwts.builder()
+                .id(UUID.randomUUID().toString())
                 .issuer(properties.getIssuer())
                 .subject(userDetails.getUsername())
+                .claim(TOKEN_TYPE_CLAIM, tokenType)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiry))
                 .signWith(signingKey, Jwts.SIG.HS256)
@@ -44,9 +58,24 @@ public class JwtService {
         return extractAllClaims(token).getSubject();
     }
 
-    public boolean isTokenValid(String token, UserDetails userDetails) {
+    public boolean isAccessTokenValid(String token, UserDetails userDetails) {
+        if (!ACCESS_TOKEN_TYPE.equals(extractTokenType(token))) {
+            return false;
+        }
         String username = extractUsername(token);
         return username.equals(userDetails.getUsername()) && !isTokenExpired(token);
+    }
+
+    public boolean isRefreshTokenValid(String token, UserDetails userDetails) {
+        if (!REFRESH_TOKEN_TYPE.equals(extractTokenType(token))) {
+            return false;
+        }
+        String username = extractUsername(token);
+        return username.equals(userDetails.getUsername()) && !isTokenExpired(token);
+    }
+
+    public String extractTokenType(String token) {
+        return extractAllClaims(token).get(TOKEN_TYPE_CLAIM, String.class);
     }
 
     private boolean isTokenExpired(String token) {

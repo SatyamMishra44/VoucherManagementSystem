@@ -41,10 +41,23 @@ CYGWIN* | MINGW*)
   ;;
 esac
 
+# Normalize JAVA_HOME when it is mistakenly set to the JDK bin directory.
+if [ -n "${JAVA_HOME-}" ] && [ ! -x "$JAVA_HOME/bin/java" ] && [ -x "$JAVA_HOME/java" ]; then
+  JAVA_HOME="${JAVA_HOME%/}"
+  JAVA_HOME="${JAVA_HOME%/bin}"
+  export JAVA_HOME
+fi
+
 # set JAVACMD and JAVACCMD
 set_java_home() {
   # For Cygwin and MinGW, ensure paths are in Unix format before anything is touched
   if [ -n "${JAVA_HOME-}" ]; then
+    # Normalize JAVA_HOME when it is mistakenly set to the bin directory.
+    if [ ! -x "$JAVA_HOME/bin/java" ] && [ -x "$JAVA_HOME/java" ]; then
+      JAVA_HOME="${JAVA_HOME%/}"
+      JAVA_HOME="${JAVA_HOME%/bin}"
+    fi
+
     if [ -x "$JAVA_HOME/jre/sh/java" ]; then
       # IBM's JDK on AIX uses strange locations for the executables
       JAVACMD="$JAVA_HOME/jre/sh/java"

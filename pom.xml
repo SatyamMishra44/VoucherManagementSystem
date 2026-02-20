@@ -9,7 +9,7 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.example</groupId>
-	<artifactId>VoucherMangementSystem</artifactId>
+	<artifactId>VoucherManagementSystem</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>VoucherMangementSystem</name>
 	<description>This is the Voucher Management System</description>
@@ -91,10 +91,26 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-test</artifactId>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 
 	<build>
 		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<useFile>true</useFile>
+					<redirectTestOutputToFile>true</redirectTestOutputToFile>
+					<printSummary>true</printSummary>
+					<reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
+					<testFailureIgnore>false</testFailureIgnore>
+				</configuration>
+			</plugin>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>

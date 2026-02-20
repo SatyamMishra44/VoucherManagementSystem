@@ -5,11 +5,20 @@ import lombok.Data;
 @Data
 public class AuthResponseDto {
     private String accessToken;
+    private String refreshToken;
     private String tokenType = "Bearer";
-    private long expiresInSeconds;
+    private long accessTokenExpiresInSeconds;
+    private long refreshTokenExpiresInSeconds;
 
-    public AuthResponseDto(String accessToken, long expiresInSeconds) {
+    public AuthResponseDto(
+            String accessToken,
+            String refreshToken,
+            long accessTokenExpiresInSeconds,
+            long refreshTokenExpiresInSeconds
+    ) {
         this.accessToken = accessToken;
-        this.expiresInSeconds = expiresInSeconds;
+        this.refreshToken = refreshToken;
+        this.accessTokenExpiresInSeconds = accessTokenExpiresInSeconds;
+        this.refreshTokenExpiresInSeconds = refreshTokenExpiresInSeconds;
     }
 }
