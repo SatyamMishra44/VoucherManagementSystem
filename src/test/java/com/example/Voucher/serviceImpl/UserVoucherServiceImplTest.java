@@ -124,7 +124,7 @@ class UserVoucherServiceImplTest {
             return history;
         });
 
-        RedemptionResult result = userVoucherService.redeemVoucher(10L, 99L, null, 55L);
+        RedemptionResult result = userVoucherService.redeemVoucher(10L, 99L, 55L);
 
         assertEquals(Long.valueOf(501L), result.getRedemptionId());
         assertEquals(new BigDecimal("80.00"), result.getRedeemedAmount());
@@ -139,18 +139,18 @@ class UserVoucherServiceImplTest {
         when(userVoucherRepository.findByIdAndUserIdForUpdate(999L, 10L)).thenReturn(Optional.empty());
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                () -> userVoucherService.redeemVoucher(10L, 999L, new BigDecimal("20"), null));
+                () -> userVoucherService.redeemVoucher(10L, 999L, 55L));
 
         assertEquals("User voucher not found", ex.getMessage());
         verify(redemptionHistoryRepository, never()).save(any());
     }
 
     @Test
-    void redeemVoucher_whenNoBillAndInvalidAmount_throwsIllegalArgumentException() {
+    void redeemVoucher_whenBillIdMissing_throwsIllegalArgumentException() {
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                () -> userVoucherService.redeemVoucher(10L, 99L, BigDecimal.ZERO, null));
+                () -> userVoucherService.redeemVoucher(10L, 99L, null));
 
-        assertEquals("Bill amount must be greater than zero when bill id is not provided", ex.getMessage());
+        assertEquals("Bill id is required", ex.getMessage());
     }
 
     @Test
@@ -164,7 +164,7 @@ class UserVoucherServiceImplTest {
         when(billRepository.findByIdAndUserId(77L, 10L)).thenReturn(Optional.empty());
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                () -> userVoucherService.redeemVoucher(10L, 99L, null, 77L));
+                () -> userVoucherService.redeemVoucher(10L, 99L, 77L));
 
         assertEquals("Bill not found", ex.getMessage());
         verify(transactionRepository, never()).save(any());
@@ -175,9 +175,12 @@ class UserVoucherServiceImplTest {
         UserVoucher userVoucher = new UserVoucher(activeTemplate, user, 1,
                 new BigDecimal("50.00"), new BigDecimal("50.00"));
         setField(userVoucher, "id", 99L);
+        Bill bill = new Bill(user, new BigDecimal("80.00"));
+        setField(bill, "id", 88L);
 
         when(userRepository.findById(10L)).thenReturn(Optional.of(user));
         when(userVoucherRepository.findByIdAndUserIdForUpdate(99L, 10L)).thenReturn(Optional.of(userVoucher));
+        when(billRepository.findByIdAndUserId(88L, 10L)).thenReturn(Optional.of(bill));
         when(userVoucherRepository.save(any(UserVoucher.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(redemptionHistoryRepository.save(any(RedemptionHistory.class))).thenAnswer(invocation -> {
             RedemptionHistory history = invocation.getArgument(0);
@@ -185,13 +188,13 @@ class UserVoucherServiceImplTest {
             return history;
         });
 
-        RedemptionResult result = userVoucherService.redeemVoucher(10L, 99L, new BigDecimal("80.00"), null);
+        RedemptionResult result = userVoucherService.redeemVoucher(10L, 99L, 88L);
 
         assertEquals(new BigDecimal("50.00"), result.getRedeemedAmount());
         assertEquals(new BigDecimal("30.00"), result.getPayableAmount());
         assertEquals(UserVoucherStatus.INACTIVE, result.getUserVoucher().getStatus());
         assertEquals(new BigDecimal("0.00"), result.getUserVoucher().getRemainingBalance());
-        verify(transactionRepository, never()).save(any());
+        verify(transactionRepository).save(any());
     }
 
     private static void setField(Object target, String fieldName, Object value) {

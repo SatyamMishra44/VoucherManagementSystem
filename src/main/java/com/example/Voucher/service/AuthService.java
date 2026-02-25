@@ -5,23 +5,20 @@ import com.example.Voucher.dto.AuthRegisterRequestDto;
 import com.example.Voucher.dto.AuthResponseDto;
 import com.example.Voucher.dto.LogoutRequestDto;
 import com.example.Voucher.dto.RefreshTokenRequestDto;
-import com.example.Voucher.entity.RefreshToken;
 import com.example.Voucher.entity.Role;
 import com.example.Voucher.entity.User;
 import com.example.Voucher.exception.InvalidRefreshTokenException;
-import com.example.Voucher.repository.RefreshTokenRepository;
 import com.example.Voucher.repository.RoleRepository;
 import com.example.Voucher.security.JwtProperties;
 import com.example.Voucher.security.JwtService;
 import com.example.Voucher.security.RoleProperties;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
+import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.HexFormat;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,7 +32,7 @@ public class AuthService {
     private final JwtProperties jwtProperties;
     private final AuthenticationManager authenticationManager;
     private final UserDetailsService userDetailsService;
-    private final RefreshTokenRepository refreshTokenRepository;
+    private final StringRedisTemplate redisTemplate;
 
     public AuthService(
             UserService userService,
@@ -45,7 +42,7 @@ public class AuthService {
             JwtProperties jwtProperties,
             AuthenticationManager authenticationManager,
             UserDetailsService userDetailsService,
-            RefreshTokenRepository refreshTokenRepository
+            StringRedisTemplate redisTemplate
     ) {
         this.userService = userService;
         this.roleRepository = roleRepository;
@@ -54,7 +51,7 @@ public class AuthService {
         this.jwtProperties = jwtProperties;
         this.authenticationManager = authenticationManager;
         this.userDetailsService = userDetailsService;
-        this.refreshTokenRepository = refreshTokenRepository;
+        this.redisTemplate = redisTemplate;
     }
 
     public void register(AuthRegisterRequestDto request) {
@@ -94,7 +91,7 @@ public class AuthService {
         String accessToken = jwtService.generateAccessToken(userDetails);
         String refreshToken = jwtService.generateRefreshToken(userDetails);
 
-        saveRefreshToken(user, refreshToken);
+        saveRefreshToken(user.getEmail(), refreshToken);
 
         return new AuthResponseDto(
                 accessToken,
@@ -104,7 +101,6 @@ public class AuthService {
         );
     }
 
-    @Transactional
     public AuthResponseDto refresh(RefreshTokenRequestDto request) {
         String rawRefreshToken = request.getRefreshToken();
         String email;
@@ -126,62 +122,35 @@ public class AuthService {
             throw new InvalidRefreshTokenException("Invalid refresh token");
         }
 
-        String tokenHash = hashToken(rawRefreshToken);
-        RefreshToken storedToken = refreshTokenRepository.findByTokenHash(tokenHash)
-                .orElseThrow(() -> new InvalidRefreshTokenException("Invalid refresh token"));
-
-        if (storedToken.isRevoked() || storedToken.isExpired()) {
-            throw new InvalidRefreshTokenException("Refresh token expired or revoked");
+        String key = refreshTokenKey(rawRefreshToken);
+        String storedEmail = redisTemplate.opsForValue().get(key);
+        if (storedEmail == null || !storedEmail.equals(email)) {
+            throw new InvalidRefreshTokenException("Invalid refresh token");
         }
-
-        String newRefreshToken = jwtService.generateRefreshToken(userDetails);
-        String newRefreshTokenHash = hashToken(newRefreshToken);
-
-        storedToken.revoke(newRefreshTokenHash);
-        refreshTokenRepository.save(storedToken);
-
-        refreshTokenRepository.save(new RefreshToken(
-                user,
-                newRefreshTokenHash,
-                LocalDateTime.now().plusSeconds(jwtProperties.getRefreshExpirationSeconds())
-        ));
 
         String newAccessToken = jwtService.generateAccessToken(userDetails);
 
         return new AuthResponseDto(
                 newAccessToken,
-                newRefreshToken,
+                rawRefreshToken,
                 jwtProperties.getAccessExpirationSeconds(),
                 jwtProperties.getRefreshExpirationSeconds()
         );
     }
 
-    @Transactional
     public void logout(LogoutRequestDto request) {
-        String tokenHash = hashToken(request.getRefreshToken());
-        refreshTokenRepository.findByTokenHash(tokenHash).ifPresent(token -> {
-            if (!token.isRevoked()) {
-                token.revoke(null);
-                refreshTokenRepository.save(token);
-            }
-        });
+        redisTemplate.delete(refreshTokenKey(request.getRefreshToken()));
     }
 
-    private void saveRefreshToken(User user, String rawRefreshToken) {
-        refreshTokenRepository.save(new RefreshToken(
-                user,
-                hashToken(rawRefreshToken),
-                LocalDateTime.now().plusSeconds(jwtProperties.getRefreshExpirationSeconds())
-        ));
+    private void saveRefreshToken(String email, String rawRefreshToken) {
+        redisTemplate.opsForValue().set(
+                refreshTokenKey(rawRefreshToken),
+                email,
+                Duration.ofSeconds(jwtProperties.getRefreshExpirationSeconds())
+        );
     }
 
-    private String hashToken(String token) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hashed = digest.digest(token.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(hashed);
-        } catch (Exception ex) {
-            throw new IllegalStateException("Unable to hash refresh token", ex);
-        }
+    private String refreshTokenKey(String token) {
+        return "refresh:" + token;
     }
 }

@@ -24,13 +24,8 @@ public class JwtProperties {
         this.accessExpirationSeconds = accessExpirationSeconds;
     }
 
-    public long getRefreshExpirationSeconds() {
-        return refreshExpirationSeconds;
-    }
-
-    public void setRefreshExpirationSeconds(long refreshExpirationSeconds) {
-        this.refreshExpirationSeconds = refreshExpirationSeconds;
-    }
+    public long getRefreshExpirationSeconds() { return refreshExpirationSeconds; }
+    public void setRefreshExpirationSeconds(long refreshExpirationSeconds) { this.refreshExpirationSeconds = refreshExpirationSeconds; }
 
     public long getExpirationSeconds() { return expirationSeconds; }
     public void setExpirationSeconds(long expirationSeconds) { this.expirationSeconds = expirationSeconds; }

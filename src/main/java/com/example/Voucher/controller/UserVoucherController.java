@@ -81,7 +81,6 @@ public class UserVoucherController {
         RedemptionResult result = userVoucherService.redeemVoucher(
                 userId,
                 request.getUserVoucherId(),
-                request.getBillAmount(),
                 request.getBillId()
         );
 

@@ -12,6 +12,14 @@ public class AuthResponseDto {
 
     public AuthResponseDto(
             String accessToken,
+            long accessTokenExpiresInSeconds
+    ) {
+        this.accessToken = accessToken;
+        this.accessTokenExpiresInSeconds = accessTokenExpiresInSeconds;
+    }
+
+    public AuthResponseDto(
+            String accessToken,
             String refreshToken,
             long accessTokenExpiresInSeconds,
             long refreshTokenExpiresInSeconds

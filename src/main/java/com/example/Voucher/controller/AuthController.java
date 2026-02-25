@@ -22,7 +22,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
-
     public AuthController(AuthService authService) {
         this.authService = authService;
     }
@@ -48,8 +47,8 @@ public class AuthController {
 
     @PostMapping("/refresh")
     @Operation(
-            summary = "Step 3: Refresh Token",
-            description = "Use a valid refresh token to get a new access token without logging in again."
+            summary = "Step 3: Refresh Access Token",
+            description = "Use a valid refresh token to issue a new short-lived access token."
     )
     public ResponseEntity<AuthResponseDto> refresh(@Valid @RequestBody RefreshTokenRequestDto request) {
         return ResponseEntity.ok(authService.refresh(request));
@@ -57,11 +56,16 @@ public class AuthController {
 
     @PostMapping("/logout")
     @Operation(
-            summary = "Step 4: Logout",
-            description = "Revoke the provided refresh token and end this session."
+            summary = "Logout",
+            description = "Invalidate refresh token to end session."
     )
     public ResponseEntity<Void> logout(@Valid @RequestBody LogoutRequestDto request) {
         authService.logout(request);
         return ResponseEntity.noContent().build();
     }
 }
+
+
+
+
+

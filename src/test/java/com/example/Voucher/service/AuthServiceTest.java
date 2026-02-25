@@ -1,12 +1,11 @@
 package com.example.Voucher.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -15,19 +14,15 @@ import com.example.Voucher.dto.AuthRegisterRequestDto;
 import com.example.Voucher.dto.AuthResponseDto;
 import com.example.Voucher.dto.LogoutRequestDto;
 import com.example.Voucher.dto.RefreshTokenRequestDto;
-import com.example.Voucher.entity.RefreshToken;
 import com.example.Voucher.entity.Role;
 import com.example.Voucher.entity.User;
 import com.example.Voucher.exception.InvalidRefreshTokenException;
-import com.example.Voucher.repository.RefreshTokenRepository;
 import com.example.Voucher.repository.RoleRepository;
 import com.example.Voucher.security.JwtProperties;
 import com.example.Voucher.security.JwtService;
 import com.example.Voucher.security.RoleProperties;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
+import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.HexFormat;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,6 +31,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -59,7 +56,9 @@ class AuthServiceTest {
     @Mock
     private UserDetailsService userDetailsService;
     @Mock
-    private RefreshTokenRepository refreshTokenRepository;
+    private StringRedisTemplate redisTemplate;
+    @Mock
+    private ValueOperations<String, String> valueOperations;
 
     @InjectMocks
     private AuthService authService;
@@ -136,7 +135,7 @@ class AuthServiceTest {
     }
 
     @Test
-    void login_whenValidRequest_returnsTokensAndPersistsRefreshTokenHash() {
+    void login_whenValidRequest_returnsTokensAndStoresRefreshTokenInRedis() {
         User user = new User("Sam", "K", "hash", "9876543210", "sam@example.com", LocalDateTime.now());
         UserDetails userDetails = org.springframework.security.core.userdetails.User
                 .withUsername("sam@example.com")
@@ -150,16 +149,18 @@ class AuthServiceTest {
         when(jwtService.generateRefreshToken(userDetails)).thenReturn("refresh-token");
         when(jwtProperties.getAccessExpirationSeconds()).thenReturn(300L);
         when(jwtProperties.getRefreshExpirationSeconds()).thenReturn(1200L);
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
 
         AuthResponseDto response = authService.login(loginRequest);
 
         verify(authenticationManager).authenticate(new UsernamePasswordAuthenticationToken("sam@example.com", "secret123"));
         assertEquals("access-token", response.getAccessToken());
         assertEquals("refresh-token", response.getRefreshToken());
-
-        ArgumentCaptor<RefreshToken> tokenCaptor = ArgumentCaptor.forClass(RefreshToken.class);
-        verify(refreshTokenRepository).save(tokenCaptor.capture());
-        assertEquals(sha256("refresh-token"), tokenCaptor.getValue().getTokenHash());
+        verify(valueOperations).set(
+                eq("refresh:refresh-token"),
+                eq("sam@example.com"),
+                eq(Duration.ofSeconds(1200L))
+        );
     }
 
     @Test
@@ -175,7 +176,7 @@ class AuthServiceTest {
     }
 
     @Test
-    void refresh_whenTokenNotStored_throwsInvalidRefreshTokenException() {
+    void refresh_whenTokenNotInRedis_throwsInvalidRefreshTokenException() {
         String rawToken = "refresh-token";
         RefreshTokenRequestDto request = new RefreshTokenRequestDto();
         request.setRefreshToken(rawToken);
@@ -191,7 +192,8 @@ class AuthServiceTest {
         when(userService.findByEmail("sam@example.com")).thenReturn(Optional.of(user));
         when(userDetailsService.loadUserByUsername("sam@example.com")).thenReturn(userDetails);
         when(jwtService.isRefreshTokenValid(rawToken, userDetails)).thenReturn(true);
-        when(refreshTokenRepository.findByTokenHash(sha256(rawToken))).thenReturn(Optional.empty());
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("refresh:refresh-token")).thenReturn(null);
 
         InvalidRefreshTokenException ex = assertThrows(InvalidRefreshTokenException.class,
                 () -> authService.refresh(request));
@@ -200,7 +202,7 @@ class AuthServiceTest {
     }
 
     @Test
-    void refresh_whenStoredTokenRevoked_throwsInvalidRefreshTokenException() {
+    void refresh_whenTokenValid_returnsNewAccessAndSameRefreshToken() {
         String rawToken = "refresh-token";
         RefreshTokenRequestDto request = new RefreshTokenRequestDto();
         request.setRefreshToken(rawToken);
@@ -212,44 +214,12 @@ class AuthServiceTest {
                 .authorities("USER")
                 .build();
 
-        RefreshToken storedToken = new RefreshToken(user, sha256(rawToken), LocalDateTime.now().plusMinutes(10));
-        storedToken.revoke(null);
-
         when(jwtService.extractUsername(rawToken)).thenReturn("sam@example.com");
         when(userService.findByEmail("sam@example.com")).thenReturn(Optional.of(user));
         when(userDetailsService.loadUserByUsername("sam@example.com")).thenReturn(userDetails);
         when(jwtService.isRefreshTokenValid(rawToken, userDetails)).thenReturn(true);
-        when(refreshTokenRepository.findByTokenHash(sha256(rawToken))).thenReturn(Optional.of(storedToken));
-
-        InvalidRefreshTokenException ex = assertThrows(InvalidRefreshTokenException.class,
-                () -> authService.refresh(request));
-
-        assertEquals("Refresh token expired or revoked", ex.getMessage());
-    }
-
-    @Test
-    void refresh_whenValidToken_rotatesRefreshTokenAndReturnsNewTokenPair() {
-        String oldRefresh = "old-refresh";
-        String newRefresh = "new-refresh";
-
-        RefreshTokenRequestDto request = new RefreshTokenRequestDto();
-        request.setRefreshToken(oldRefresh);
-
-        User user = new User("Sam", "K", "hash", "9876543210", "sam@example.com", LocalDateTime.now());
-        UserDetails userDetails = org.springframework.security.core.userdetails.User
-                .withUsername("sam@example.com")
-                .password("hash")
-                .authorities("USER")
-                .build();
-
-        RefreshToken storedToken = new RefreshToken(user, sha256(oldRefresh), LocalDateTime.now().plusMinutes(10));
-
-        when(jwtService.extractUsername(oldRefresh)).thenReturn("sam@example.com");
-        when(userService.findByEmail("sam@example.com")).thenReturn(Optional.of(user));
-        when(userDetailsService.loadUserByUsername("sam@example.com")).thenReturn(userDetails);
-        when(jwtService.isRefreshTokenValid(oldRefresh, userDetails)).thenReturn(true);
-        when(refreshTokenRepository.findByTokenHash(sha256(oldRefresh))).thenReturn(Optional.of(storedToken));
-        when(jwtService.generateRefreshToken(userDetails)).thenReturn(newRefresh);
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("refresh:refresh-token")).thenReturn("sam@example.com");
         when(jwtService.generateAccessToken(userDetails)).thenReturn("new-access");
         when(jwtProperties.getAccessExpirationSeconds()).thenReturn(300L);
         when(jwtProperties.getRefreshExpirationSeconds()).thenReturn(1200L);
@@ -257,57 +227,16 @@ class AuthServiceTest {
         AuthResponseDto response = authService.refresh(request);
 
         assertEquals("new-access", response.getAccessToken());
-        assertEquals("new-refresh", response.getRefreshToken());
-        assertTrue(storedToken.isRevoked());
-        assertEquals(sha256(newRefresh), storedToken.getReplacedByTokenHash());
-
-        ArgumentCaptor<RefreshToken> saveCaptor = ArgumentCaptor.forClass(RefreshToken.class);
-        verify(refreshTokenRepository, times(2)).save(saveCaptor.capture());
-        assertEquals(storedToken, saveCaptor.getAllValues().get(0));
+        assertEquals("refresh-token", response.getRefreshToken());
     }
 
     @Test
-    void logout_whenTokenExistsAndNotRevoked_revokesAndSaves() {
-        String rawToken = "refresh-token";
+    void logout_whenCalled_deletesRedisRefreshKey() {
         LogoutRequestDto request = new LogoutRequestDto();
-        request.setRefreshToken(rawToken);
-
-        User user = new User("Sam", "K", "hash", "9876543210", "sam@example.com", LocalDateTime.now());
-        RefreshToken stored = new RefreshToken(user, sha256(rawToken), LocalDateTime.now().plusMinutes(10));
-
-        when(refreshTokenRepository.findByTokenHash(sha256(rawToken))).thenReturn(Optional.of(stored));
+        request.setRefreshToken("refresh-token");
 
         authService.logout(request);
 
-        assertTrue(stored.isRevoked());
-        verify(refreshTokenRepository).save(stored);
-    }
-
-    @Test
-    void logout_whenTokenAlreadyRevoked_doesNotSaveAgain() {
-        String rawToken = "refresh-token";
-        LogoutRequestDto request = new LogoutRequestDto();
-        request.setRefreshToken(rawToken);
-
-        User user = new User("Sam", "K", "hash", "9876543210", "sam@example.com", LocalDateTime.now());
-        RefreshToken stored = new RefreshToken(user, sha256(rawToken), LocalDateTime.now().plusMinutes(10));
-        stored.revoke(null);
-
-        when(refreshTokenRepository.findByTokenHash(sha256(rawToken))).thenReturn(Optional.of(stored));
-
-        authService.logout(request);
-
-        verify(refreshTokenRepository, never()).save(stored);
-        assertNotNull(stored.getRevokedAt());
-    }
-
-    private static String sha256(String value) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hashed = digest.digest(value.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(hashed);
-        } catch (Exception ex) {
-            throw new RuntimeException(ex);
-        }
+        verify(redisTemplate).delete("refresh:refresh-token");
     }
 }

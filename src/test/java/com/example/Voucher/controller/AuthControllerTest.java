@@ -24,6 +24,8 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.redis.RedisConnectionFailureException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(AuthController.class)
@@ -84,26 +86,63 @@ class AuthControllerTest {
         request.setPassword("secret123");
 
         when(authService.login(any(AuthLoginRequestDto.class)))
-                .thenReturn(new AuthResponseDto("access-token", "refresh-token", 300, 1200));
+                .thenReturn(new AuthResponseDto("access-token", 300));
 
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.accessToken").value("access-token"))
-                .andExpect(jsonPath("$.refreshToken").value("refresh-token"));
+                .andExpect(jsonPath("$.accessToken").value("access-token"));
     }
 
     @Test
-    void refresh_whenTokenMissing_returnsBadRequest() throws Exception {
+    void login_whenBadCredentials_returnsUnauthorized() throws Exception {
+        AuthLoginRequestDto request = new AuthLoginRequestDto();
+        request.setEmail("sam@example.com");
+        request.setPassword("wrong-password");
+
+        when(authService.login(any(AuthLoginRequestDto.class)))
+                .thenThrow(new BadCredentialsException("Bad credentials"));
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.message").value("Invalid email or password"));
+    }
+
+    @Test
+    void login_whenRedisUnavailable_returnsServiceUnavailable() throws Exception {
+        AuthLoginRequestDto request = new AuthLoginRequestDto();
+        request.setEmail("sam@example.com");
+        request.setPassword("secret123");
+
+        when(authService.login(any(AuthLoginRequestDto.class)))
+                .thenThrow(new RedisConnectionFailureException("redis down"));
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.status").value(503))
+                .andExpect(jsonPath("$.message").value("Database/Redis is unavailable"));
+    }
+
+    @Test
+    void refresh_whenValidRequest_returnsAuthResponse() throws Exception {
         RefreshTokenRequestDto request = new RefreshTokenRequestDto();
+        request.setRefreshToken("refresh-token");
+
+        when(authService.refresh(any(RefreshTokenRequestDto.class)))
+                .thenReturn(new AuthResponseDto("new-access-token", "refresh-token", 300, 1200));
 
         mockMvc.perform(post("/api/v1/auth/refresh")
                         .contentType(APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
-
-        verifyNoInteractions(authService);
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").value("new-access-token"))
+                .andExpect(jsonPath("$.refreshToken").value("refresh-token"));
     }
 
     @Test

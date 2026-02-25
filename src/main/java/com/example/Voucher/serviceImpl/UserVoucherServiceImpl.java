@@ -83,15 +83,15 @@ public class UserVoucherServiceImpl implements UserVoucherService {
     }
 
     @Override
-    public RedemptionResult redeemVoucher(Long userId, Long userVoucherId, BigDecimal billAmount, Long billId) {
+    public RedemptionResult redeemVoucher(Long userId, Long userVoucherId, Long billId) {
         if (userId == null) {
             throw new IllegalArgumentException("User id is required");
         }
         if (userVoucherId == null) {
             throw new IllegalArgumentException("User voucher id is required");
         }
-        if (billId == null && (billAmount == null || billAmount.compareTo(BigDecimal.ZERO) <= 0)) {
-            throw new IllegalArgumentException("Bill amount must be greater than zero when bill id is not provided");
+        if (billId == null) {
+            throw new IllegalArgumentException("Bill id is required");
         }
 
         User user = userRepository.findById(userId)
@@ -110,15 +110,9 @@ public class UserVoucherServiceImpl implements UserVoucherService {
             throw new IllegalArgumentException("User voucher has no remaining balance");
         }
 
-        Bill bill = null;
-        BigDecimal effectiveBillAmount = billAmount != null
-                ? billAmount.setScale(2, RoundingMode.HALF_UP)
-                : BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
-        if (billId != null) {
-            bill = billRepository.findByIdAndUserId(billId, userId)
-                    .orElseThrow(() -> new IllegalArgumentException("Bill not found"));
-            effectiveBillAmount = bill.getTotalAmount().setScale(2, RoundingMode.HALF_UP);
-        }
+        Bill bill = billRepository.findByIdAndUserId(billId, userId)
+                .orElseThrow(() -> new IllegalArgumentException("Bill not found"));
+        BigDecimal effectiveBillAmount = bill.getTotalAmount().setScale(2, RoundingMode.HALF_UP);
 
         BigDecimal deduction = effectiveBillAmount.min(userVoucher.getRemainingBalance())
                 .setScale(2, RoundingMode.HALF_UP);
@@ -136,14 +130,12 @@ public class UserVoucherServiceImpl implements UserVoucherService {
         );
         redemptionHistoryRepository.save(history);
 
-        if (bill != null) {
-            Transaction transaction = new Transaction(user, bill, effectiveBillAmount, payableAmount);
-            transactionRepository.save(transaction);
-        }
+        Transaction transaction = new Transaction(user, bill, effectiveBillAmount, payableAmount);
+        transactionRepository.save(transaction);
 
         return new RedemptionResult(
                 history.getId(),
-                bill != null ? bill.getId() : null,
+                bill.getId(),
                 userVoucher,
                 effectiveBillAmount,
                 deduction,

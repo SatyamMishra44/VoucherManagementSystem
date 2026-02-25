@@ -6,7 +6,7 @@ This README is written for beginners and maps to the current codebase.
 
 ## What This Project Does
 
-- User registration and login with JWT tokens
+- User registration and login with JWT access + refresh tokens
 - Role-based authorization (`ADMIN`, `USER`)
 - Admin voucher template management (create, enable/disable)
 - User voucher purchase and redemption
@@ -20,6 +20,7 @@ This README is written for beginners and maps to the current codebase.
 - Spring Boot 3.4.2
 - Spring Web
 - Spring Security + JWT (`jjwt`)
+- Spring Data Redis (refresh token cache)
 - Spring Data JPA (Hibernate)
 - MySQL
 - Bean Validation (Jakarta Validation)
@@ -44,11 +45,13 @@ src/main/java/com/example/Voucher
 ## High-Level Flow
 
 1. Register with `/api/v1/auth/register` (new users are assigned `USER` role).
-2. Login with `/api/v1/auth/login` and receive JWT token.
-3. Use `Authorization: Bearer <token>` for protected APIs.
-4. Admin creates voucher templates.
-5. Users list eligible templates, purchase vouchers, and redeem balance.
-6. Users can view their vouchers and redemption history.
+2. Login with `/api/v1/auth/login` and receive access + refresh tokens.
+3. Use `Authorization: Bearer <access-token>` for protected APIs.
+4. Use `/api/v1/auth/refresh` with refresh token to issue a new access token.
+5. Use `/api/v1/auth/logout` to invalidate refresh token.
+6. Admin creates voucher templates.
+7. Users list eligible templates, purchase vouchers, and redeem balance.
+8. Users can view their vouchers and redemption history.
 
 ## Authentication and Roles
 
@@ -72,6 +75,8 @@ Important: Registration always assigns `USER` role. There is no API to create an
 
 - `POST /auth/register`
 - `POST /auth/login`
+- `POST /auth/refresh`
+- `POST /auth/logout`
 
 ### Users
 
@@ -131,13 +136,35 @@ Login response:
 
 ```json
 {
-  "accessToken": "<jwt>",
+  "accessToken": "<access-jwt>",
+  "refreshToken": "<refresh-jwt>",
   "tokenType": "Bearer",
-  "expiresInSeconds": 86400
+  "accessTokenExpiresInSeconds": 600,
+  "refreshTokenExpiresInSeconds": 604800
 }
 ```
 
-### 3. Create Voucher Template (Admin)
+### 3. Refresh Access Token
+
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/refresh \
+  -H "Content-Type: application/json" \
+  -d '{
+    "refreshToken": "<refresh-jwt>"
+  }'
+```
+
+### 4. Logout (Invalidate Refresh Token)
+
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/logout \
+  -H "Content-Type: application/json" \
+  -d '{
+    "refreshToken": "<refresh-jwt>"
+  }'
+```
+
+### 5. Create Voucher Template (Admin)
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/admin/vouchers \
@@ -151,7 +178,7 @@ curl -X POST http://localhost:8080/api/v1/admin/vouchers \
   }'
 ```
 
-### 4. Purchase Voucher (User)
+### 6. Purchase Voucher (User)
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/vouchers/purchase \
@@ -163,7 +190,7 @@ curl -X POST http://localhost:8080/api/v1/vouchers/purchase \
   }'
 ```
 
-### 5. Redeem Voucher (User, with bill id)
+### 7. Redeem Voucher (User, with bill id)
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/vouchers/redeem \
@@ -175,7 +202,7 @@ curl -X POST http://localhost:8080/api/v1/vouchers/redeem \
   }'
 ```
 
-### 6. Create Bill (Admin)
+### 8. Create Bill (Admin)
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/bills \
@@ -191,8 +218,8 @@ curl -X POST http://localhost:8080/api/v1/bills \
 
 - Voucher template must be enabled and date-valid to be purchased/redeemed.
 - Purchased voucher starts as `ACTIVE`; becomes `INACTIVE` when balance reaches zero.
-- Redemption amount is `min(billAmount, remainingBalance)`.
-- If `billId` is provided, bill amount is taken from DB and transaction record is created.
+- Redemption amount is `min(bill.totalAmount, remainingBalance)`.
+- `billId` is required for redemption; bill amount is always fetched from DB and a transaction record is created.
 - Redemption uses pessimistic locking (`PESSIMISTIC_WRITE`) on user voucher row to avoid race conditions.
 
 ## Validation Rules
@@ -243,7 +270,10 @@ Important env/properties:
 - `DB_USERNAME` (default: `root`)
 - `DB_PASSWORD` (required)
 - `JWT_SECRET` (required)
-- `security.jwt.expiration-seconds` (default: `86400`)
+- `security.jwt.access-expiration-seconds` (default: `600`)
+- `security.jwt.refresh-expiration-seconds` (default: `604800`)
+- `REDIS_HOST` (default: `127.0.0.1`)
+- `REDIS_PORT` (default: `6379`)
 
 ## Local Setup
 
@@ -251,12 +281,14 @@ Prerequisites:
 
 - Java 21
 - MySQL running locally
+- Redis running locally
 
 Steps:
 
 1. Create `config/application-secrets.properties` with `DB_PASSWORD` and `JWT_SECRET`.
 2. Start MySQL.
-3. Run the app:
+3. Start Redis.
+4. Run the app:
 
 ```bash
 ./mvnw spring-boot:run
