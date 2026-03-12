@@ -12,9 +12,8 @@ import java.time.LocalDateTime;
 @Entity
 @Table(
         name = "voucher_templates",
-        uniqueConstraints = {
-                @UniqueConstraint(columnNames = "code")
-        }
+        uniqueConstraints = @UniqueConstraint(columnNames = "code"),
+        indexes = @Index(name = "idx_voucher_templates_tenant_id", columnList = "tenant_id")
 )
 public class VoucherTemplate {
 
@@ -27,7 +26,7 @@ public class VoucherTemplate {
     private String code;
 
     @NotNull
-    @Column(nullable = false, precision = 19, scale = 2)
+    @Column(nullable = false, precision = 19, scale = 2) // total 19 digit and 2 digit after the decimal
     private BigDecimal unitValue;
 
     @NotNull
@@ -44,6 +43,9 @@ public class VoucherTemplate {
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
+
+    @Column(name = "tenant_id", nullable = false)
+    private Long tenantId;
 
     protected VoucherTemplate() {
     }
@@ -87,6 +89,7 @@ public class VoucherTemplate {
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
+    public Long getTenantId() { return tenantId; }
 
     public boolean isEnabled() {
         return Boolean.TRUE.equals(enabled);
@@ -98,5 +101,9 @@ public class VoucherTemplate {
 
     public void disable() {
         this.enabled = false;
+    }
+
+    public void setTenantId(Long tenantId) {
+        this.tenantId = tenantId;
     }
 }

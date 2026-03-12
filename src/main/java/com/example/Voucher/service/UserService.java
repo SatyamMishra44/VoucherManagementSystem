@@ -21,6 +21,8 @@ public interface UserService {
 
     List<User> getAllUsers();
 
+    List<User> getUsersWithFilters(String firstName,String lastName, String email, String phoneNumber, Boolean enabled);
+
     boolean existsById(Long userId);
 
     Optional<User> findByEmail(String email);

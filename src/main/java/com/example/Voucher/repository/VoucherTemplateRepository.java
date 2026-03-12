@@ -11,9 +11,12 @@ import java.util.Optional;
 @Repository
 public interface VoucherTemplateRepository extends JpaRepository<VoucherTemplate, Long> {
 
-    Optional<VoucherTemplate> findByCode(String code);
+    Optional<VoucherTemplate> findByCodeAndTenantId(String code, Long tenantId);
 
-    List<VoucherTemplate> findByEnabledTrueAndStartDateLessThanEqualAndExpiryDateGreaterThanEqual(
+    Optional<VoucherTemplate> findByIdAndTenantId(Long id, Long tenantId);
+
+    List<VoucherTemplate> findByTenantIdAndEnabledTrueAndStartDateLessThanEqualAndExpiryDateGreaterThanEqual(
+            Long tenantId,
             LocalDate startDate,
             LocalDate expiryDate
     );

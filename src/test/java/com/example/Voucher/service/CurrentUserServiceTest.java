@@ -60,7 +60,8 @@ class CurrentUserServiceTest {
 
     @Test
     void assertSelfOrAdmin_whenOtherUserWithoutAdminRole_throwsAccessDeniedException() {
-        when(roleProperties.getAdmin()).thenReturn("ADMIN");
+        when(roleProperties.getPlatformAdmin()).thenReturn("PLATFORM_ADMIN");
+        when(roleProperties.getTenantAdmin()).thenReturn("TENANT_ADMIN");
         SecurityContextHolder.getContext().setAuthentication(
                 new TestingAuthenticationToken("sam@example.com", "pwd", "USER")
         );
@@ -77,7 +78,7 @@ class CurrentUserServiceTest {
 
     @Test
     void assertSelfOrAdmin_whenAdmin_skipsOwnershipCheck() {
-        when(roleProperties.getAdmin()).thenReturn("ADMIN");
+        when(roleProperties.getPlatformAdmin()).thenReturn("ADMIN");
         SecurityContextHolder.getContext().setAuthentication(
                 new TestingAuthenticationToken("admin@example.com", "pwd", "ADMIN")
         );
@@ -89,7 +90,7 @@ class CurrentUserServiceTest {
 
     @Test
     void isCurrentUserAdmin_whenAuthorityPresent_returnsTrue() {
-        when(roleProperties.getAdmin()).thenReturn("ADMIN");
+        when(roleProperties.getPlatformAdmin()).thenReturn("ADMIN");
         SecurityContextHolder.getContext().setAuthentication(
                 new TestingAuthenticationToken("admin@example.com", "pwd", "ADMIN")
         );

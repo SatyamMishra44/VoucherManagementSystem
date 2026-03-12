@@ -19,7 +19,8 @@ public class RoleSeeder implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        seedRoleIfMissing(roleProperties.getAdmin(), "System administrator");
+        seedRoleIfMissing(roleProperties.getPlatformAdmin(), "Platform administrator");
+        seedRoleIfMissing(roleProperties.getTenantAdmin(), "Tenant administrator");
         seedRoleIfMissing(roleProperties.getUser(), "Standard user");
     }
 

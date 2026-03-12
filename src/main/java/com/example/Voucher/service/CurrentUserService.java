@@ -2,6 +2,8 @@ package com.example.Voucher.service;
 
 import com.example.Voucher.entity.User;
 import com.example.Voucher.security.RoleProperties;
+import com.example.Voucher.security.TenantAwareUserDetails;
+import com.example.Voucher.tenant.TenantContext;
 import java.util.Objects;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
@@ -29,7 +31,19 @@ public class CurrentUserService {
     }
 
     public Long getCurrentUserId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof TenantAwareUserDetails principal) {
+            return principal.getUserId();
+        }
         return getCurrentUser().getId();
+    }
+
+    public Long getCurrentTenantId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof TenantAwareUserDetails principal) {
+            return principal.getTenantId();
+        }
+        return TenantContext.requireTenantId();
     }
 
     public boolean isCurrentUserAdmin() {
@@ -38,7 +52,8 @@ public class CurrentUserService {
             throw new AccessDeniedException("Authentication required");
         }
         return auth.getAuthorities().stream()
-                .anyMatch(a -> Objects.equals(a.getAuthority(), roleProperties.getAdmin()));
+                .anyMatch(a -> Objects.equals(a.getAuthority(), roleProperties.getPlatformAdmin())
+                        || Objects.equals(a.getAuthority(), roleProperties.getTenantAdmin()));
     }
 
     public void assertSelfOrAdmin(Long userId) {
@@ -48,7 +63,8 @@ public class CurrentUserService {
         }
 
         boolean isAdmin = auth.getAuthorities().stream()
-                .anyMatch(a -> Objects.equals(a.getAuthority(), roleProperties.getAdmin()));
+                .anyMatch(a -> Objects.equals(a.getAuthority(), roleProperties.getPlatformAdmin())
+                        || Objects.equals(a.getAuthority(), roleProperties.getTenantAdmin()));
         if (isAdmin) {
             return;
         }

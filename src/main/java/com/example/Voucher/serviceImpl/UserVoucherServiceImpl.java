@@ -5,6 +5,7 @@ import com.example.Voucher.entity.RedemptionHistory;
 import com.example.Voucher.entity.Transaction;
 import com.example.Voucher.entity.User;
 import com.example.Voucher.entity.UserVoucher;
+import com.example.Voucher.entity.UserVoucherStatus;
 import com.example.Voucher.entity.VoucherTemplate;
 import com.example.Voucher.repository.BillRepository;
 import com.example.Voucher.repository.RedemptionHistoryRepository;
@@ -14,13 +15,16 @@ import com.example.Voucher.repository.UserVoucherRepository;
 import com.example.Voucher.repository.VoucherTemplateRepository;
 import com.example.Voucher.service.RedemptionResult;
 import com.example.Voucher.service.UserVoucherService;
+import com.example.Voucher.tenant.TenantContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 
 @Service
 @Transactional
@@ -49,6 +53,7 @@ public class UserVoucherServiceImpl implements UserVoucherService {
 
     @Override
     public UserVoucher purchaseVoucher(Long userId, String voucherCode, Integer quantity) {
+        Long tenantId = TenantContext.requireTenantId();
         if (userId == null) {
             throw new IllegalArgumentException("User id is required");
         }
@@ -59,10 +64,10 @@ public class UserVoucherServiceImpl implements UserVoucherService {
             throw new IllegalArgumentException("Quantity must be greater than zero");
         }
 
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByIdAndTenantId(userId, tenantId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        VoucherTemplate template = voucherTemplateRepository.findByCode(voucherCode)
+        VoucherTemplate template = voucherTemplateRepository.findByCodeAndTenantId(voucherCode, tenantId)
                 .orElseThrow(() -> new IllegalArgumentException("Voucher template not found"));
 
         validateTemplateEligibility(template);
@@ -84,6 +89,7 @@ public class UserVoucherServiceImpl implements UserVoucherService {
 
     @Override
     public RedemptionResult redeemVoucher(Long userId, Long userVoucherId, Long billId) {
+        Long tenantId = TenantContext.requireTenantId();
         if (userId == null) {
             throw new IllegalArgumentException("User id is required");
         }
@@ -94,10 +100,10 @@ public class UserVoucherServiceImpl implements UserVoucherService {
             throw new IllegalArgumentException("Bill id is required");
         }
 
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByIdAndTenantId(userId, tenantId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        UserVoucher userVoucher = userVoucherRepository.findByIdAndUserIdForUpdate(userVoucherId, userId)
+        UserVoucher userVoucher = userVoucherRepository.findByIdAndUserIdForUpdate(userVoucherId, userId, tenantId)
                 .orElseThrow(() -> new IllegalArgumentException("User voucher not found"));
 
         if (!userVoucher.isActive()) {
@@ -110,7 +116,7 @@ public class UserVoucherServiceImpl implements UserVoucherService {
             throw new IllegalArgumentException("User voucher has no remaining balance");
         }
 
-        Bill bill = billRepository.findByIdAndUserId(billId, userId)
+        Bill bill = billRepository.findByIdAndUserIdAndTenantId(billId, userId, tenantId)
                 .orElseThrow(() -> new IllegalArgumentException("Bill not found"));
         BigDecimal effectiveBillAmount = bill.getTotalAmount().setScale(2, RoundingMode.HALF_UP);
 
@@ -150,7 +156,10 @@ public class UserVoucherServiceImpl implements UserVoucherService {
         if (userId == null) {
             throw new IllegalArgumentException("User id is required");
         }
-        return userVoucherRepository.findByUserIdOrderByPurchasedAtDesc(userId);
+        return userVoucherRepository.findByUserIdAndTenantIdOrderByPurchasedAtDesc(
+                userId,
+                TenantContext.requireTenantId()
+        );
     }
 
     @Override
@@ -159,7 +168,53 @@ public class UserVoucherServiceImpl implements UserVoucherService {
         if (userId == null) {
             throw new IllegalArgumentException("User id is required");
         }
-        return redemptionHistoryRepository.findByUserVoucherUserIdOrderByRedeemedAtDesc(userId);
+        return redemptionHistoryRepository.findByUserVoucherUserIdAndTenantIdOrderByRedeemedAtDesc(
+                userId,
+                TenantContext.requireTenantId()
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UserVoucher> getAdminFilteredVouchers(
+            Long assignedUserId,
+            BigDecimal minVoucherAmount,
+            BigDecimal maxVoucherAmount,
+            String redemptionState,
+            LocalDate issuedFrom,
+            LocalDate issuedTo,
+            LocalDate expiryFrom,
+            LocalDate expiryTo,
+            String status
+    ) {
+        if (minVoucherAmount != null && maxVoucherAmount != null && minVoucherAmount.compareTo(maxVoucherAmount) > 0) {
+            throw new IllegalArgumentException("minVoucherAmount cannot be greater than maxVoucherAmount");
+        }
+        if (issuedFrom != null && issuedTo != null && issuedFrom.isAfter(issuedTo)) {
+            throw new IllegalArgumentException("issuedFrom cannot be after issuedTo");
+        }
+        if (expiryFrom != null && expiryTo != null && expiryFrom.isAfter(expiryTo)) {
+            throw new IllegalArgumentException("expiryFrom cannot be after expiryTo");
+        }
+
+        String normalizedRedemptionState = normalizeRedemptionState(redemptionState);
+        UserVoucherStatus normalizedStatus = parseStatus(status);
+
+        LocalDateTime issuedFromDateTime = issuedFrom == null ? null : issuedFrom.atStartOfDay();
+        LocalDateTime issuedToDateTime = issuedTo == null ? null : issuedTo.atTime(23, 59, 59);
+
+        return userVoucherRepository.findAllByTenantIdWithAdminFilters(
+                TenantContext.requireTenantId(),
+                assignedUserId,
+                minVoucherAmount,
+                maxVoucherAmount,
+                normalizedRedemptionState,
+                issuedFromDateTime,
+                issuedToDateTime,
+                expiryFrom,
+                expiryTo,
+                normalizedStatus
+        );
     }
 
     private void validateTemplateEligibility(VoucherTemplate template) {
@@ -170,5 +225,31 @@ public class UserVoucherServiceImpl implements UserVoucherService {
         if (today.isBefore(template.getStartDate()) || today.isAfter(template.getExpiryDate())) {
             throw new IllegalArgumentException("Voucher template is not valid on this date");
         }
+    }
+
+    private UserVoucherStatus parseStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return null;
+        }
+        try {
+            return UserVoucherStatus.valueOf(status.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("Invalid status. Allowed values: ACTIVE, INACTIVE");
+        }
+    }
+
+    private String normalizeRedemptionState(String redemptionState) {
+        if (redemptionState == null || redemptionState.isBlank()) {
+            return null;
+        }
+        String normalized = redemptionState.trim().toUpperCase(Locale.ROOT);
+        if (!"NOT_REDEEMED".equals(normalized)
+                && !"PARTIALLY_REDEEMED".equals(normalized)
+                && !"FULLY_REDEEMED".equals(normalized)) {
+            throw new IllegalArgumentException(
+                    "Invalid redemptionState. Allowed values: NOT_REDEEMED, PARTIALLY_REDEEMED, FULLY_REDEEMED"
+            );
+        }
+        return normalized;
     }
 }

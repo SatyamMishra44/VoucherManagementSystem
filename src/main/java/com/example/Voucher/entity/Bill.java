@@ -8,7 +8,10 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "bills")
+@Table(
+        name = "bills",
+        indexes = @Index(name = "idx_bills_tenant_id", columnList = "tenant_id")
+)
 public class Bill {
 
     @Id
@@ -27,6 +30,9 @@ public class Bill {
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "tenant_id", nullable = false)
+    private Long tenantId;
+
     // JPA requirement
     protected Bill() {
     }
@@ -35,6 +41,7 @@ public class Bill {
         this.user = user;
         this.totalAmount = totalAmount.setScale(2, RoundingMode.HALF_UP);
         this.createdAt = LocalDateTime.now();
+        this.tenantId = user != null ? user.getTenantId() : null;
     }
 
     // Getters only
@@ -53,4 +60,5 @@ public class Bill {
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
+    public Long getTenantId() { return tenantId; }
 }

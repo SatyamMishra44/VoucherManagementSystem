@@ -8,10 +8,12 @@ import static org.mockito.Mockito.when;
 import com.example.Voucher.entity.Bill;
 import com.example.Voucher.entity.User;
 import com.example.Voucher.repository.BillRepository;
+import com.example.Voucher.tenant.TenantContext;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -27,12 +29,19 @@ class BillServiceImplTest {
 
     @BeforeEach
     void setUp() {
+        TenantContext.setTenantId(1L);
         billService = new BillServiceImpl(billRepository);
+    }
+
+    @AfterEach
+    void tearDown() {
+        TenantContext.clear();
     }
 
     @Test
     void createBill_whenValidBill_savesAndReturnsBill() {
         User user = new User("Sam", "K", "hash", "9876543210", "sam@example.com", LocalDateTime.now());
+        setField(user, "tenantId", 1L);
         Bill bill = new Bill(user, BigDecimal.valueOf(500));
 
         when(billRepository.save(bill)).thenReturn(bill);
@@ -64,6 +73,7 @@ class BillServiceImplTest {
     @Test
     void createBill_whenAmountIsZero_throwsIllegalArgumentException() {
         User user = new User("Sam", "K", "hash", "9876543210", "sam@example.com", LocalDateTime.now());
+        setField(user, "tenantId", 1L);
         Bill bill = new Bill(user, BigDecimal.ZERO);
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
@@ -83,9 +93,10 @@ class BillServiceImplTest {
     @Test
     void calculateTotalAmount_whenBillExists_returnsAmount() {
         User user = new User("Sam", "K", "hash", "9876543210", "sam@example.com", LocalDateTime.now());
+        setField(user, "tenantId", 1L);
         Bill bill = new Bill(user, BigDecimal.valueOf(250));
 
-        when(billRepository.findById(1L)).thenReturn(Optional.of(bill));
+        when(billRepository.findByIdAndTenantId(1L, 1L)).thenReturn(Optional.of(bill));
 
         BigDecimal total = billService.calculateTotalAmount(1L);
 
@@ -94,11 +105,21 @@ class BillServiceImplTest {
 
     @Test
     void calculateTotalAmount_whenBillMissing_throwsRuntimeException() {
-        when(billRepository.findById(99L)).thenReturn(Optional.empty());
+        when(billRepository.findByIdAndTenantId(99L, 1L)).thenReturn(Optional.empty());
 
         RuntimeException ex = assertThrows(RuntimeException.class,
                 () -> billService.calculateTotalAmount(99L));
 
         assertEquals("Bill not found", ex.getMessage());
+    }
+
+    private static void setField(Object target, String fieldName, Object value) {
+        try {
+            java.lang.reflect.Field field = target.getClass().getDeclaredField(fieldName);
+            field.setAccessible(true);
+            field.set(target, value);
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
+        }
     }
 }

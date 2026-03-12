@@ -12,7 +12,10 @@ import java.util.Set;
 
 @Getter
 @Entity
-@Table(name = "users")
+@Table(
+        name = "users",
+        indexes = @Index(name = "idx_users_tenant_id", columnList = "tenant_id")
+)
 public class User {
 
     @Id
@@ -50,6 +53,9 @@ public class User {
     @Column(nullable = false)
     private boolean enabled = true;
 
+    @Column(name = "tenant_id", nullable = false)
+    private Long tenantId;
+
     @ManyToMany
     @JoinTable(
             name = "user_roles",
@@ -86,8 +92,10 @@ public class User {
     }
     public boolean isEnabled() { return enabled; }
     public Set<Role> getRoles() { return roles; }
+    public Long getTenantId() { return tenantId; }
 
     public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
+    public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
 
     public void addRole(Role role) {
         this.roles.add(role);

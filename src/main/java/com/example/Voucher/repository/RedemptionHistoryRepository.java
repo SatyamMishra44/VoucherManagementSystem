@@ -9,7 +9,7 @@ import java.util.List;
 @Repository
 public interface RedemptionHistoryRepository extends JpaRepository<RedemptionHistory, Long> {
 
-    List<RedemptionHistory> findByUserVoucherUserIdOrderByRedeemedAtDesc(Long userId);
+    List<RedemptionHistory> findByUserVoucherUserIdAndTenantIdOrderByRedeemedAtDesc(Long userId, Long tenantId);
 
-    List<RedemptionHistory> findByUserVoucherIdOrderByRedeemedAtDesc(Long userVoucherId);
+    List<RedemptionHistory> findByUserVoucherIdAndTenantIdOrderByRedeemedAtDesc(Long userVoucherId, Long tenantId);
 }

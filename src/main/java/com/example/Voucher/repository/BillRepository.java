@@ -10,7 +10,9 @@ import java.util.Optional;
 
 @Repository
 public interface BillRepository extends JpaRepository<Bill, Long> {
-    List<Bill> findByUserId(Long userId); // this will us to get the all the bill details that belongs to the specific user by findByUserId method.
+    List<Bill> findByUserIdAndTenantId(Long userId, Long tenantId);
 
-    Optional<Bill> findByIdAndUserId(Long id, Long userId);
+    Optional<Bill> findByIdAndTenantId(Long id, Long tenantId);
+
+    Optional<Bill> findByIdAndUserIdAndTenantId(Long id, Long userId, Long tenantId);
 }

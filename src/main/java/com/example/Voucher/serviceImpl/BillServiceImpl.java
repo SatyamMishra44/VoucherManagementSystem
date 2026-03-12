@@ -3,6 +3,7 @@ package com.example.Voucher.serviceImpl;
 import com.example.Voucher.entity.Bill;
 import com.example.Voucher.repository.BillRepository;
 import com.example.Voucher.service.BillService;
+import com.example.Voucher.tenant.TenantContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,7 +53,7 @@ public class BillServiceImpl implements BillService {
             throw new IllegalArgumentException("Bill ID cannot be null");
         }
 
-        return billRepository.findById(billId);
+        return billRepository.findByIdAndTenantId(billId, TenantContext.requireTenantId());
     }
 
     @Override
@@ -63,7 +64,7 @@ public class BillServiceImpl implements BillService {
         if (userId == null) {
             throw new IllegalArgumentException("User ID cannot be null");
         }
-        return billRepository.findByIdAndUserId(billId, userId);
+        return billRepository.findByIdAndUserIdAndTenantId(billId, userId, TenantContext.requireTenantId());
     }
 
     /**
@@ -76,7 +77,7 @@ public class BillServiceImpl implements BillService {
             throw new IllegalArgumentException("User ID cannot be null");
         }
 
-        return billRepository.findByUserId(userId);
+        return billRepository.findByUserIdAndTenantId(userId, TenantContext.requireTenantId());
     }
 
 

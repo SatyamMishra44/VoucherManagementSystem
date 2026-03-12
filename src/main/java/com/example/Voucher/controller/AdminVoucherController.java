@@ -24,7 +24,7 @@ public class AdminVoucherController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority(@roleProperties.getAdmin())")
+    @PreAuthorize("hasAuthority(@roleProperties.getPlatformAdmin())")
     @Operation(
             summary = "Step 3A (Admin): Create Voucher Template",
             description = "Create a reusable voucher definition (code, value, valid dates). Users can buy vouchers from this template."
@@ -43,7 +43,7 @@ public class AdminVoucherController {
     }
 
     @PatchMapping("/{templateId}/status")
-    @PreAuthorize("hasAuthority(@roleProperties.getAdmin())")
+    @PreAuthorize("hasAuthority(@roleProperties.getPlatformAdmin())")
     @Operation(
             summary = "Step 3B (Admin): Enable/Disable Voucher Template",
             description = "Turn a voucher template ON or OFF without deleting it. Disabled templates cannot be purchased."

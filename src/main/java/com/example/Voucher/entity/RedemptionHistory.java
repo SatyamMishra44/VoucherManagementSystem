@@ -8,7 +8,10 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "redemption_history")
+@Table(
+        name = "redemption_history",
+        indexes = @Index(name = "idx_redemption_history_tenant_id", columnList = "tenant_id")
+)
 public class RedemptionHistory {
 
     @Id
@@ -34,6 +37,9 @@ public class RedemptionHistory {
     @Column(nullable = false)
     private LocalDateTime redeemedAt;
 
+    @Column(name = "tenant_id", nullable = false)
+    private Long tenantId;
+
     protected RedemptionHistory() {
     }
 
@@ -41,11 +47,15 @@ public class RedemptionHistory {
                              Bill bill,
                              BigDecimal redeemedAmount,
                              BigDecimal remainingBalanceAfter) {
+        if (bill != null && !userVoucher.getTenantId().equals(bill.getTenantId())) {
+            throw new IllegalArgumentException("Cross-tenant redemption history is not allowed");
+        }
         this.userVoucher = userVoucher;
         this.bill = bill;
         this.redeemedAmount = redeemedAmount.setScale(2, RoundingMode.HALF_UP);
         this.remainingBalanceAfter = remainingBalanceAfter.setScale(2, RoundingMode.HALF_UP);
         this.redeemedAt = LocalDateTime.now();
+        this.tenantId = userVoucher.getTenantId();
     }
 
     public Long getId() {
@@ -71,4 +81,5 @@ public class RedemptionHistory {
     public LocalDateTime getRedeemedAt() {
         return redeemedAt;
     }
+    public Long getTenantId() { return tenantId; }
 }

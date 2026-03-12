@@ -8,7 +8,10 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "user_vouchers")
+@Table(
+        name = "user_vouchers",
+        indexes = @Index(name = "idx_user_vouchers_tenant_id", columnList = "tenant_id")
+)
 public class UserVoucher {
 
     @Id
@@ -43,6 +46,9 @@ public class UserVoucher {
     @Column(nullable = false)
     private LocalDateTime purchasedAt;
 
+    @Column(name = "tenant_id", nullable = false)
+    private Long tenantId;
+
     protected UserVoucher() {
     }
 
@@ -51,6 +57,9 @@ public class UserVoucher {
                        Integer quantityPurchased,
                        BigDecimal totalPurchasedAmount,
                        BigDecimal remainingBalance) {
+        if (!user.getTenantId().equals(voucherTemplate.getTenantId())) {
+            throw new IllegalArgumentException("Cross-tenant voucher assignment is not allowed");
+        }
         this.voucherTemplate = voucherTemplate;
         this.user = user;
         this.quantityPurchased = quantityPurchased;
@@ -58,6 +67,7 @@ public class UserVoucher {
         this.remainingBalance = remainingBalance.setScale(2, RoundingMode.HALF_UP);
         this.status = UserVoucherStatus.ACTIVE;
         this.purchasedAt = LocalDateTime.now();
+        this.tenantId = user.getTenantId();
     }
 
     public Long getId() {
@@ -91,6 +101,7 @@ public class UserVoucher {
     public LocalDateTime getPurchasedAt() {
         return purchasedAt;
     }
+    public Long getTenantId() { return tenantId; }
 
     public boolean isActive() {
         return UserVoucherStatus.ACTIVE.equals(status);

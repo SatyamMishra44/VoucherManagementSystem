@@ -18,12 +18,16 @@ import com.example.Voucher.entity.Role;
 import com.example.Voucher.entity.User;
 import com.example.Voucher.exception.InvalidRefreshTokenException;
 import com.example.Voucher.repository.RoleRepository;
+import com.example.Voucher.security.CustomUserDetailsService;
 import com.example.Voucher.security.JwtProperties;
 import com.example.Voucher.security.JwtService;
 import com.example.Voucher.security.RoleProperties;
+import com.example.Voucher.security.TenantAwareUserDetails;
+import com.example.Voucher.tenant.TenantContext;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Optional;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,8 +39,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 
 @ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
@@ -54,7 +58,7 @@ class AuthServiceTest {
     @Mock
     private AuthenticationManager authenticationManager;
     @Mock
-    private UserDetailsService userDetailsService;
+    private CustomUserDetailsService userDetailsService;
     @Mock
     private StringRedisTemplate redisTemplate;
     @Mock
@@ -68,6 +72,7 @@ class AuthServiceTest {
 
     @BeforeEach
     void setUp() {
+        TenantContext.setTenantId(1L);
         registerRequest = new AuthRegisterRequestDto();
         registerRequest.setFirstName("Sam");
         registerRequest.setLastName("K");
@@ -78,6 +83,11 @@ class AuthServiceTest {
         loginRequest = new AuthLoginRequestDto();
         loginRequest.setEmail("sam@example.com");
         loginRequest.setPassword("secret123");
+    }
+
+    @AfterEach
+    void tearDown() {
+        TenantContext.clear();
     }
 
     @Test
@@ -137,14 +147,18 @@ class AuthServiceTest {
     @Test
     void login_whenValidRequest_returnsTokensAndStoresRefreshTokenInRedis() {
         User user = new User("Sam", "K", "hash", "9876543210", "sam@example.com", LocalDateTime.now());
-        UserDetails userDetails = org.springframework.security.core.userdetails.User
-                .withUsername("sam@example.com")
-                .password("hash")
-                .authorities("USER")
-                .build();
+        setField(user, "tenantId", 1L);
+        UserDetails userDetails = new TenantAwareUserDetails(
+                10L,
+                1L,
+                "sam@example.com",
+                "hash",
+                true,
+                java.util.Set.of(new SimpleGrantedAuthority("USER"))
+        );
 
         when(userService.findByEmail("sam@example.com")).thenReturn(Optional.of(user));
-        when(userDetailsService.loadUserByUsername("sam@example.com")).thenReturn(userDetails);
+        when(userDetailsService.loadUserByUsernameAndTenantId("sam@example.com", 1L)).thenReturn(userDetails);
         when(jwtService.generateAccessToken(userDetails)).thenReturn("access-token");
         when(jwtService.generateRefreshToken(userDetails)).thenReturn("refresh-token");
         when(jwtProperties.getAccessExpirationSeconds()).thenReturn(300L);
@@ -157,8 +171,8 @@ class AuthServiceTest {
         assertEquals("access-token", response.getAccessToken());
         assertEquals("refresh-token", response.getRefreshToken());
         verify(valueOperations).set(
-                eq("refresh:refresh-token"),
-                eq("sam@example.com"),
+                eq("refresh:1:refresh-token"),
+                eq("1:sam@example.com"),
                 eq(Duration.ofSeconds(1200L))
         );
     }
@@ -182,18 +196,23 @@ class AuthServiceTest {
         request.setRefreshToken(rawToken);
 
         User user = new User("Sam", "K", "hash", "9876543210", "sam@example.com", LocalDateTime.now());
-        UserDetails userDetails = org.springframework.security.core.userdetails.User
-                .withUsername("sam@example.com")
-                .password("hash")
-                .authorities("USER")
-                .build();
+        setField(user, "tenantId", 1L);
+        UserDetails userDetails = new TenantAwareUserDetails(
+                10L,
+                1L,
+                "sam@example.com",
+                "hash",
+                true,
+                java.util.Set.of(new SimpleGrantedAuthority("USER"))
+        );
 
         when(jwtService.extractUsername(rawToken)).thenReturn("sam@example.com");
+        when(jwtService.extractTenantId(rawToken)).thenReturn(1L);
         when(userService.findByEmail("sam@example.com")).thenReturn(Optional.of(user));
-        when(userDetailsService.loadUserByUsername("sam@example.com")).thenReturn(userDetails);
+        when(userDetailsService.loadUserByUsernameAndTenantId("sam@example.com", 1L)).thenReturn(userDetails);
         when(jwtService.isRefreshTokenValid(rawToken, userDetails)).thenReturn(true);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.get("refresh:refresh-token")).thenReturn(null);
+        when(valueOperations.get("refresh:1:refresh-token")).thenReturn(null);
 
         InvalidRefreshTokenException ex = assertThrows(InvalidRefreshTokenException.class,
                 () -> authService.refresh(request));
@@ -208,18 +227,23 @@ class AuthServiceTest {
         request.setRefreshToken(rawToken);
 
         User user = new User("Sam", "K", "hash", "9876543210", "sam@example.com", LocalDateTime.now());
-        UserDetails userDetails = org.springframework.security.core.userdetails.User
-                .withUsername("sam@example.com")
-                .password("hash")
-                .authorities("USER")
-                .build();
+        setField(user, "tenantId", 1L);
+        UserDetails userDetails = new TenantAwareUserDetails(
+                10L,
+                1L,
+                "sam@example.com",
+                "hash",
+                true,
+                java.util.Set.of(new SimpleGrantedAuthority("USER"))
+        );
 
         when(jwtService.extractUsername(rawToken)).thenReturn("sam@example.com");
+        when(jwtService.extractTenantId(rawToken)).thenReturn(1L);
         when(userService.findByEmail("sam@example.com")).thenReturn(Optional.of(user));
-        when(userDetailsService.loadUserByUsername("sam@example.com")).thenReturn(userDetails);
+        when(userDetailsService.loadUserByUsernameAndTenantId("sam@example.com", 1L)).thenReturn(userDetails);
         when(jwtService.isRefreshTokenValid(rawToken, userDetails)).thenReturn(true);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.get("refresh:refresh-token")).thenReturn("sam@example.com");
+        when(valueOperations.get("refresh:1:refresh-token")).thenReturn("1:sam@example.com");
         when(jwtService.generateAccessToken(userDetails)).thenReturn("new-access");
         when(jwtProperties.getAccessExpirationSeconds()).thenReturn(300L);
         when(jwtProperties.getRefreshExpirationSeconds()).thenReturn(1200L);
@@ -234,9 +258,20 @@ class AuthServiceTest {
     void logout_whenCalled_deletesRedisRefreshKey() {
         LogoutRequestDto request = new LogoutRequestDto();
         request.setRefreshToken("refresh-token");
+        when(jwtService.extractTenantId("refresh-token")).thenReturn(1L);
 
         authService.logout(request);
 
-        verify(redisTemplate).delete("refresh:refresh-token");
+        verify(redisTemplate).delete("refresh:1:refresh-token");
+    }
+
+    private static void setField(Object target, String fieldName, Object value) {
+        try {
+            java.lang.reflect.Field field = target.getClass().getDeclaredField(fieldName);
+            field.setAccessible(true);
+            field.set(target, value);
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
+        }
     }
 }

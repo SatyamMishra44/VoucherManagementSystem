@@ -39,7 +39,7 @@ public class BillController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority(@roleProperties.getAdmin())")
+    @PreAuthorize("hasAnyAuthority(@roleProperties.getPlatformAdmin(), @roleProperties.getTenantAdmin())")
     @Operation(
             summary = "Admin: Create Bill",
             description = "Create a bill record for a user. This bill can later be used during redemption."
@@ -57,7 +57,7 @@ public class BillController {
     }
 
     @GetMapping("/{billId}")
-    @PreAuthorize("hasAnyAuthority(@roleProperties.getAdmin(), @roleProperties.getUser())")
+    @PreAuthorize("hasAnyAuthority(@roleProperties.getPlatformAdmin(), @roleProperties.getTenantAdmin(), @roleProperties.getUser())")
     @Operation(
             summary = "View Bill By Id",
             description = "Admin can view any bill. User can view only own bill."
@@ -73,7 +73,7 @@ public class BillController {
     }
 
     @GetMapping("/user/{userId}")
-    @PreAuthorize("hasAnyAuthority(@roleProperties.getAdmin(), @roleProperties.getUser())")
+    @PreAuthorize("hasAnyAuthority(@roleProperties.getPlatformAdmin(), @roleProperties.getTenantAdmin(), @roleProperties.getUser())")
     @Operation(
             summary = "View Bills By User",
             description = "Get all bills for one user. Users can view only their own bills."

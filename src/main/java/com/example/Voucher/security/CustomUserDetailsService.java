@@ -2,6 +2,7 @@ package com.example.Voucher.security;
 
 import com.example.Voucher.entity.User;
 import com.example.Voucher.repository.UserRepository;
+import com.example.Voucher.tenant.TenantContext;
 import java.util.stream.Collectors;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -22,18 +23,29 @@ public class CustomUserDetailsService implements UserDetailsService {
     @Override
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        User user = userRepository.findByEmail(email)
+        Long tenantId = TenantContext.requireTenantId();
+        User user = userRepository.findByEmailAndTenantId(email, tenantId)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        return toUserDetails(user);
+    }
 
-        return org.springframework.security.core.userdetails.User.builder()
-                .username(user.getEmail())
-                .password(user.getPasswordHash())
-                .disabled(!user.isEnabled())
-                .authorities(
-                        user.getRoles().stream()
-                                .map(role -> new SimpleGrantedAuthority(role.getName()))
-                                .collect(Collectors.toSet())
-                )
-                .build();
+    @Transactional(readOnly = true)
+    public UserDetails loadUserByUsernameAndTenantId(String email, Long tenantId) {
+        User user = userRepository.findByEmailAndTenantId(email, tenantId)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        return toUserDetails(user);
+    }
+
+    private UserDetails toUserDetails(User user) {
+        return new TenantAwareUserDetails(
+                user.getId(),
+                user.getTenantId(),
+                user.getEmail(),
+                user.getPasswordHash(),
+                user.isEnabled(),
+                user.getRoles().stream()
+                        .map(role -> new SimpleGrantedAuthority(role.getName()))
+                        .collect(Collectors.toSet())
+        );
     }
 }

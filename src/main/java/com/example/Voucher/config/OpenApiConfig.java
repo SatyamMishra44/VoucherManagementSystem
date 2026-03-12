@@ -1,11 +1,16 @@
 package com.example.Voucher.config;
 
+import io.swagger.v3.oas.models.Operation;
+import io.swagger.v3.oas.models.parameters.Parameter;
+import io.swagger.v3.oas.models.media.StringSchema;
 import io.swagger.v3.oas.annotations.OpenAPIDefinition;
 import io.swagger.v3.oas.annotations.info.Info;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springdoc.core.customizers.OpenApiCustomizer;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
@@ -32,5 +37,35 @@ import org.springframework.context.annotation.Configuration;
         bearerFormat = "JWT"
 )
 public class OpenApiConfig {
-    // Central place for OpenAPI metadata and JWT security scheme.
+    // Central place for OpenAPI metadata and security/header docs.
+
+    private static final String TENANT_HEADER = "X-Tenant-Code";
+
+    @Bean
+    public OpenApiCustomizer tenantHeaderCustomizer() {
+        return openApi -> {
+            if (openApi.getPaths() == null) {
+                return;
+            }
+            openApi.getPaths().values().forEach(pathItem ->
+                    pathItem.readOperations().forEach(this::addTenantHeaderIfMissing)
+            );
+        };
+    }
+
+    private void addTenantHeaderIfMissing(Operation operation) {
+        if (operation.getParameters() != null && operation.getParameters().stream()
+                .anyMatch(p -> TENANT_HEADER.equalsIgnoreCase(p.getName()) && "header".equalsIgnoreCase(p.getIn()))) {
+            return;
+        }
+
+        Parameter tenantHeaderParam = new Parameter()
+                .in("header")
+                .name(TENANT_HEADER)
+                .required(false)
+                .description("Tenant code for multi-tenant routing. Example: 123, ACME. Defaults to SYSTEM_INDIVIDUAL when omitted.")
+                .schema(new StringSchema());
+
+        operation.addParametersItem(tenantHeaderParam);
+    }
 }

@@ -9,7 +9,10 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "transactions")
+@Table(
+        name = "transactions",
+        indexes = @Index(name = "idx_transactions_tenant_id", columnList = "tenant_id")
+)
 public class Transaction {
 
     @Id
@@ -35,15 +38,22 @@ public class Transaction {
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "tenant_id", nullable = false)
+    private Long tenantId;
+
     protected Transaction(){
         // this is no-args constructor only needed for the JPA
     }
     public Transaction(User user, Bill bill, BigDecimal totalAmount, BigDecimal finalAmount){
+        if (!user.getTenantId().equals(bill.getTenantId())) {
+            throw new IllegalArgumentException("Cross-tenant transaction is not allowed");
+        }
         this.user = user;
         this.bill = bill;
         this.totalAmount = totalAmount.setScale(2, RoundingMode.HALF_UP);
         this.finalAmount = finalAmount.setScale(2, RoundingMode.HALF_UP);
         this.createdAt = LocalDateTime.now();
+        this.tenantId = user.getTenantId();
     }
 
     public Long getId(){
@@ -64,6 +74,7 @@ public class Transaction {
     public LocalDateTime getCreatedAt(){
         return createdAt;
     }
+    public Long getTenantId() { return tenantId; }
 
 
 }

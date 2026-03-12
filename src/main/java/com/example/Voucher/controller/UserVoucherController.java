@@ -18,8 +18,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -41,7 +44,7 @@ public class UserVoucherController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAuthority(@roleProperties.getUser())")
+    @PreAuthorize("hasAnyAuthority(@roleProperties.getUser(), @roleProperties.getTenantAdmin())")
     @Operation(
             summary = "Step 4 (User): View Eligible Voucher Templates",
             description = "See templates that are currently active and within valid date range."
@@ -125,6 +128,39 @@ public class UserVoucherController {
         List<RedemptionHistory> history = userVoucherService.getUserRedemptionHistory(userId);
         List<RedemptionHistoryResponseDto> response = history.stream()
                 .map(RedemptionHistoryResponseDto::fromEntity)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/admin/issued")
+    @PreAuthorize("hasAnyAuthority(@roleProperties.getPlatformAdmin(), @roleProperties.getTenantAdmin())")
+    @Operation(
+            summary = "Admin: Filter Issued User Vouchers",
+            description = "Filter issued vouchers by amount, redemption state, issued/expiry date range, status, and assigned user."
+    )
+    public ResponseEntity<List<UserVoucherResponseDto>> getAdminFilteredIssuedVouchers(
+            @RequestParam(required = false) Long assignedUserId,
+            @RequestParam(required = false) BigDecimal minVoucherAmount,
+            @RequestParam(required = false) BigDecimal maxVoucherAmount,
+            @RequestParam(required = false) String redemptionState,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate issuedFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate issuedTo,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate expiryFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate expiryTo,
+            @RequestParam(required = false) String status
+    ) {
+        List<UserVoucherResponseDto> response = userVoucherService.getAdminFilteredVouchers(
+                        assignedUserId,
+                        minVoucherAmount,
+                        maxVoucherAmount,
+                        redemptionState,
+                        issuedFrom,
+                        issuedTo,
+                        expiryFrom,
+                        expiryTo,
+                        status
+                ).stream()
+                .map(UserVoucherResponseDto::fromEntity)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(response);
     }

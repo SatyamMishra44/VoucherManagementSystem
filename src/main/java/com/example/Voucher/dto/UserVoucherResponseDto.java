@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 public class UserVoucherResponseDto {
 
     private Long id;
+    private Long assignedUserId;
     private Long voucherTemplateId;
     private String voucherCode;
     private BigDecimal unitValue;
@@ -25,6 +26,7 @@ public class UserVoucherResponseDto {
     public static UserVoucherResponseDto fromEntity(UserVoucher userVoucher) {
         UserVoucherResponseDto dto = new UserVoucherResponseDto();
         dto.setId(userVoucher.getId());
+        dto.setAssignedUserId(userVoucher.getUser().getId());
         dto.setVoucherTemplateId(userVoucher.getVoucherTemplate().getId());
         dto.setVoucherCode(userVoucher.getVoucherTemplate().getCode());
         dto.setUnitValue(userVoucher.getVoucherTemplate().getUnitValue());

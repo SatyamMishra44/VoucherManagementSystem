@@ -16,6 +16,8 @@ public class TransactionResponseDto {
 
     private BigDecimal transactionAmount;
 
+    private BigDecimal finalAmount;
+
     private String paymentMethod;
 
     private String transactionStatus;

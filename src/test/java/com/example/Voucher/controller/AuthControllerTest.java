@@ -17,6 +17,7 @@ import com.example.Voucher.dto.RefreshTokenRequestDto;
 import com.example.Voucher.exception.GlobalExceptionHandler;
 import com.example.Voucher.security.JwtAuthenticationFilter;
 import com.example.Voucher.service.AuthService;
+import com.example.Voucher.tenant.TenantContextFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,8 +42,12 @@ class AuthControllerTest {
 
     @MockBean
     private AuthService authService;
+
     @MockBean
     private JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    @MockBean
+    private TenantContextFilter tenantContextFilter;
 
     @Test
     void register_whenValidRequest_returnsCreated() throws Exception {
