@@ -5,7 +5,7 @@ out/
 
 # Local Maven repository/cache placed inside project
 .m2repo/
-
+.env.example
 # Logs and runtime artifacts
 *.log
 logs/
@@ -44,6 +44,7 @@ nbdist/
 .env.*
 !.env.example
 src/main/resources/application-secrets.properties
+src/test/resources/application-test.properties
 config/application-secrets.properties
 
 # Optional local Spring profile override
@@ -51,3 +52,13 @@ src/main/resources/application-local.properties
 
 # Optional generated project helper file
 HELP.md
+
+# Documentation and reports
+*.docx
+*.md
+annoataion.txt
+
+!README.md
+integrationTestGuide.md
+reports/
+generated-reports/

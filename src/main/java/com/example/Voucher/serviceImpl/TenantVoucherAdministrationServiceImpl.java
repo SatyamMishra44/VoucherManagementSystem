@@ -2,13 +2,11 @@ package com.example.Voucher.serviceImpl;
 
 import com.example.Voucher.entity.TenantVoucherDistribution;
 import com.example.Voucher.entity.TenantVoucherInventory;
-import com.example.Voucher.entity.TenantVoucherRequest;
 import com.example.Voucher.entity.User;
 import com.example.Voucher.entity.UserVoucher;
 import com.example.Voucher.entity.VoucherTemplate;
 import com.example.Voucher.repository.TenantVoucherDistributionRepository;
 import com.example.Voucher.repository.TenantVoucherInventoryRepository;
-import com.example.Voucher.repository.TenantVoucherRequestRepository;
 import com.example.Voucher.repository.UserRepository;
 import com.example.Voucher.repository.UserVoucherRepository;
 import com.example.Voucher.repository.VoucherTemplateRepository;
@@ -34,7 +32,6 @@ public class TenantVoucherAdministrationServiceImpl implements TenantVoucherAdmi
     private final UserRepository userRepository;
     private final UserVoucherRepository userVoucherRepository;
     private final TenantRepository tenantRepository;
-    private final TenantVoucherRequestRepository tenantVoucherRequestRepository;
 
     public TenantVoucherAdministrationServiceImpl(
             TenantVoucherInventoryRepository tenantVoucherInventoryRepository,
@@ -42,8 +39,7 @@ public class TenantVoucherAdministrationServiceImpl implements TenantVoucherAdmi
             VoucherTemplateRepository voucherTemplateRepository,
             UserRepository userRepository,
             UserVoucherRepository userVoucherRepository,
-            TenantRepository tenantRepository,
-            TenantVoucherRequestRepository tenantVoucherRequestRepository
+            TenantRepository tenantRepository
     ) {
         this.tenantVoucherInventoryRepository = tenantVoucherInventoryRepository;
         this.tenantVoucherDistributionRepository = tenantVoucherDistributionRepository;
@@ -51,7 +47,6 @@ public class TenantVoucherAdministrationServiceImpl implements TenantVoucherAdmi
         this.userRepository = userRepository;
         this.userVoucherRepository = userVoucherRepository;
         this.tenantRepository = tenantRepository;
-        this.tenantVoucherRequestRepository = tenantVoucherRequestRepository;
     }
 
     @Override
@@ -150,45 +145,6 @@ public class TenantVoucherAdministrationServiceImpl implements TenantVoucherAdmi
     public List<TenantVoucherInventory> listTenantInventory(Long tenantId) {
         ensureOrganizationTenant(tenantId);
         return tenantVoucherInventoryRepository.findByTenantIdOrderByUpdatedAtDesc(tenantId);
-    }
-
-    @Override
-    public TenantVoucherRequest submitCustomVoucherRequest(
-            String requestedVoucherCode,
-            BigDecimal requestedUnitValue,
-            java.time.LocalDate requestedStartDate,
-            java.time.LocalDate requestedExpiryDate,
-            String notes,
-            Long actorUserId,
-            Long tenantId
-    ) {
-        if (requestedVoucherCode == null || requestedVoucherCode.isBlank()) {
-            throw new IllegalArgumentException("Requested voucher code is required");
-        }
-        if (requestedUnitValue == null || requestedUnitValue.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Requested unit value must be greater than zero");
-        }
-        if (requestedStartDate == null || requestedExpiryDate == null) {
-            throw new IllegalArgumentException("Requested date range is required");
-        }
-        if (requestedStartDate.isAfter(requestedExpiryDate)) {
-            throw new IllegalArgumentException("Requested start date cannot be after expiry date");
-        }
-
-        ensureOrganizationTenant(tenantId);
-        User requester = userRepository.findByIdAndTenantId(actorUserId, tenantId)
-                .orElseThrow(() -> new IllegalArgumentException("Tenant admin user not found"));
-
-        TenantVoucherRequest request = new TenantVoucherRequest(
-                tenantId,
-                requester,
-                requestedVoucherCode.trim(),
-                requestedUnitValue,
-                requestedStartDate,
-                requestedExpiryDate,
-                notes == null ? null : notes.trim()
-        );
-        return tenantVoucherRequestRepository.save(request);
     }
 
     private void validateTemplateEligibility(VoucherTemplate template) {

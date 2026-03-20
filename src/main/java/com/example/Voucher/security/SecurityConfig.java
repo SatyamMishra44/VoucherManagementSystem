@@ -55,6 +55,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 new AntPathRequestMatcher("/api/v1/auth/**"),
                                 new AntPathRequestMatcher("/api/v1/tenant-onboarding/**"),
+                                new AntPathRequestMatcher("/actuator/prometheus"),
                                 new AntPathRequestMatcher("/v3/api-docs"),
                                 new AntPathRequestMatcher("/v3/api-docs/**"),
                                 new AntPathRequestMatcher("/v3/api-docs.yaml"),

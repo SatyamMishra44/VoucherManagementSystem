@@ -4,6 +4,8 @@ import com.example.Voucher.entity.Transaction;
 import com.example.Voucher.repository.TransactionRepository;
 import com.example.Voucher.service.TransactionService;
 import com.example.Voucher.tenant.TenantContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,13 +14,14 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-
 @Service
 @Transactional
 public class TransactionServiceImpl implements TransactionService {
-    private  final TransactionRepository transactionRepository;
+    private static final Logger log = LoggerFactory.getLogger(TransactionServiceImpl.class);
 
-    //Constructor injection
+    private final TransactionRepository transactionRepository;
+
+    // Constructor injection
     public TransactionServiceImpl(TransactionRepository transactionRepository) {
         this.transactionRepository = transactionRepository;
     }
@@ -42,7 +45,17 @@ public class TransactionServiceImpl implements TransactionService {
             throw new IllegalArgumentException("Final amount cannot exceed total amount");
         }
 
-        return transactionRepository.save(transaction);
+        log.info("action=createTransaction started | userId={} totalAmount={} finalAmount={}",
+                transaction.getUser() != null ? transaction.getUser().getId() : null,
+                transaction.getTotalAmount(), transaction.getFinalAmount());
+        Transaction saved = transactionRepository.save(transaction);
+        log.info(
+                "action=createTransaction completed | transactionId={} userId={} totalAmount={} finalAmount={} discount={}",
+                saved.getId(),
+                saved.getUser() != null ? saved.getUser().getId() : null,
+                saved.getTotalAmount(), saved.getFinalAmount(),
+                saved.getTotalAmount().subtract(saved.getFinalAmount()));
+        return saved;
     }
 
     @Override
@@ -52,8 +65,13 @@ public class TransactionServiceImpl implements TransactionService {
             throw new IllegalArgumentException("Transaction ID cannot be null");
         }
 
-        return transactionRepository.findById(transactionId)
+        log.debug("action=getTransactionById | transactionId={}", transactionId);
+        Optional<Transaction> result = transactionRepository.findById(transactionId)
                 .filter(transaction -> transaction.getTenantId().equals(TenantContext.requireTenantId()));
+        if (result.isEmpty()) {
+            log.warn("action=getTransactionById | transactionId={} result=not found or tenant mismatch", transactionId);
+        }
+        return result;
     }
 
     /**
@@ -66,7 +84,11 @@ public class TransactionServiceImpl implements TransactionService {
             throw new IllegalArgumentException("User ID cannot be null");
         }
 
-        return transactionRepository.findByUserIdAndTenantId(userId, TenantContext.requireTenantId());
+        log.debug("action=getTransactionByUserId | userId={}", userId);
+        List<Transaction> transactions = transactionRepository.findByUserIdAndTenantId(userId,
+                TenantContext.requireTenantId());
+        log.info("action=getTransactionByUserId completed | userId={} resultCount={}", userId, transactions.size());
+        return transactions;
     }
 
     @Override
@@ -77,8 +99,8 @@ public class TransactionServiceImpl implements TransactionService {
             BigDecimal minFinalAmount,
             BigDecimal maxFinalAmount,
             LocalDateTime fromTime,
-            LocalDateTime toTime
-    ) {
+            LocalDateTime toTime) {
+        log.debug("action=getTransactionsWithFilters | userId={} fromTime={} toTime={}", userId, fromTime, toTime);
         if (minTotalAmount != null && maxTotalAmount != null && minTotalAmount.compareTo(maxTotalAmount) > 0) {
             throw new IllegalArgumentException("minTotalAmount cannot be greater than maxTotalAmount");
         }
@@ -89,7 +111,7 @@ public class TransactionServiceImpl implements TransactionService {
             throw new IllegalArgumentException("fromTime cannot be after toTime");
         }
 
-        return transactionRepository.findAllByTenantIdWithFilters(
+        List<Transaction> results = transactionRepository.findAllByTenantIdWithFilters(
                 TenantContext.requireTenantId(),
                 userId,
                 minTotalAmount,
@@ -97,8 +119,9 @@ public class TransactionServiceImpl implements TransactionService {
                 minFinalAmount,
                 maxFinalAmount,
                 fromTime,
-                toTime
-        );
+                toTime);
+        log.info("action=getTransactionsWithFilters completed | resultCount={}", results.size());
+        return results;
     }
 
 }

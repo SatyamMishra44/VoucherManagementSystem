@@ -1,0 +1,15 @@
+.git
+.gitignore
+.idea
+.m2repo
+# Build outputs
+/target
+/generated-reports
+
+# Docs and local files
+*.docx
+*.md
+*.txt
+
+# OS
+.DS_Store

@@ -6,6 +6,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import org.slf4j.MDC;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -31,8 +32,7 @@ public class TenantContextFilter extends OncePerRequestFilter {
     protected void doFilterInternal(
             HttpServletRequest request,
             HttpServletResponse response,
-            FilterChain filterChain
-    ) throws ServletException, IOException {
+            FilterChain filterChain) throws ServletException, IOException {
         try {
             Long headerTenantId = resolveHeaderTenantId(request);
             Long authenticatedTenantId = resolveAuthenticatedTenantId();
@@ -51,9 +51,13 @@ public class TenantContextFilter extends OncePerRequestFilter {
             }
 
             TenantContext.setTenantId(resolvedTenantId);
+            if (resolvedTenantId != null) {
+                MDC.put("tenantId", String.valueOf(resolvedTenantId));
+            }
             filterChain.doFilter(request, response);
         } finally {
             TenantContext.clear();
+            MDC.remove("tenantId");
         }
     }
 

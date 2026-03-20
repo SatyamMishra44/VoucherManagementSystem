@@ -57,9 +57,6 @@ public class UserVoucher {
                        Integer quantityPurchased,
                        BigDecimal totalPurchasedAmount,
                        BigDecimal remainingBalance) {
-        if (!user.getTenantId().equals(voucherTemplate.getTenantId())) {
-            throw new IllegalArgumentException("Cross-tenant voucher assignment is not allowed");
-        }
         this.voucherTemplate = voucherTemplate;
         this.user = user;
         this.quantityPurchased = quantityPurchased;

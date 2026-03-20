@@ -10,6 +10,9 @@ public class AuthResponseDto {
     private long accessTokenExpiresInSeconds;
     private long refreshTokenExpiresInSeconds;
 
+    public AuthResponseDto() {
+    }
+
     public AuthResponseDto(
             String accessToken,
             long accessTokenExpiresInSeconds

@@ -1,12 +1,9 @@
 package com.example.Voucher.controller;
 
-import com.example.Voucher.dto.tenant.TenantCustomVoucherRequestCreateDto;
-import com.example.Voucher.dto.tenant.TenantCustomVoucherRequestResponseDto;
 import com.example.Voucher.dto.tenant.TenantVoucherDistributeRequestDto;
 import com.example.Voucher.dto.tenant.TenantVoucherDistributionResponseDto;
 import com.example.Voucher.dto.tenant.TenantVoucherInventoryResponseDto;
 import com.example.Voucher.dto.tenant.TenantVoucherPurchaseRequestDto;
-import com.example.Voucher.entity.TenantVoucherRequest;
 import com.example.Voucher.entity.TenantVoucherDistribution;
 import com.example.Voucher.entity.TenantVoucherInventory;
 import com.example.Voucher.service.CurrentUserService;
@@ -91,26 +88,5 @@ public class TenantVoucherAdminController {
                 .map(TenantVoucherInventoryResponseDto::fromEntity)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(inventory);
-    }
-
-    @PostMapping("/requests")
-    @PreAuthorize("hasAuthority(@roleProperties.getTenantAdmin())")
-    @Operation(
-            summary = "Tenant Admin: Request Custom Voucher",
-            description = "Creates a custom voucher request for platform admin approval and future template creation."
-    )
-    public ResponseEntity<TenantCustomVoucherRequestResponseDto> createCustomVoucherRequest(
-            @Valid @RequestBody TenantCustomVoucherRequestCreateDto request
-    ) {
-        TenantVoucherRequest created = tenantVoucherAdministrationService.submitCustomVoucherRequest(
-                request.getRequestedVoucherCode(),
-                request.getRequestedUnitValue(),
-                request.getRequestedStartDate(),
-                request.getRequestedExpiryDate(),
-                request.getNotes(),
-                currentUserService.getCurrentUserId(),
-                currentUserService.getCurrentTenantId()
-        );
-        return ResponseEntity.status(HttpStatus.CREATED).body(TenantCustomVoucherRequestResponseDto.fromEntity(created));
     }
 }

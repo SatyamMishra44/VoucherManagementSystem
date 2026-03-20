@@ -1,8 +1,6 @@
 package com.example.Voucher.controller;
 
-import com.example.Voucher.dto.platform.CreateTenantAdminRequestDto;
 import com.example.Voucher.dto.platform.TenantAuditLogResponseDto;
-import com.example.Voucher.dto.platform.TenantAdminResponseDto;
 import com.example.Voucher.dto.platform.TenantResponseDto;
 import com.example.Voucher.dto.platform.TenantStatusUpdateRequestDto;
 import com.example.Voucher.platform.PlatformTenantManagementService;
@@ -13,16 +11,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "7. Platform Tenants", description = "Platform-only tenant onboarding and lifecycle management")
 @RestController
@@ -57,24 +48,6 @@ public class PlatformTenantController {
                 currentUserService.getCurrentUserId()
         );
         return ResponseEntity.ok(TenantResponseDto.fromEntity(tenant));
-    }
-
-    @PostMapping("/{tenantId}/tenant-admins")
-    @PreAuthorize("hasAuthority(@roleProperties.getPlatformAdmin())")
-    @Operation(
-            summary = "Platform: Create Tenant Admin",
-            description = "Creates additional TENANT_ADMIN user for an ORGANIZATION tenant and writes audit trail."
-    )
-    public ResponseEntity<TenantAdminResponseDto> createTenantAdmin(
-            @PathVariable Long tenantId,
-            @Valid @RequestBody CreateTenantAdminRequestDto request
-    ) {
-        TenantAdminResponseDto response = platformTenantManagementService.createTenantAdmin(
-                tenantId,
-                request,
-                currentUserService.getCurrentUserId()
-        );
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping
