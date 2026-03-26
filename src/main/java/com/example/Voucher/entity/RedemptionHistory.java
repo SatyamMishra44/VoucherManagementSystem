@@ -8,15 +8,17 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(
-        name = "redemption_history",
-        indexes = @Index(name = "idx_redemption_history_tenant_id", columnList = "tenant_id")
-)
+@Table(name = "redemption_history", uniqueConstraints = @UniqueConstraint(name = "uc_redemption_history_tenant_request", columnNames = {
+        "tenant_id",
+        "request_id" }), indexes = @Index(name = "idx_redemption_history_tenant_id", columnList = "tenant_id"))
 public class RedemptionHistory {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "request_id", length = 100)
+    private String requestId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_voucher_id", nullable = false)
@@ -44,9 +46,10 @@ public class RedemptionHistory {
     }
 
     public RedemptionHistory(UserVoucher userVoucher,
-                             Bill bill,
-                             BigDecimal redeemedAmount,
-                             BigDecimal remainingBalanceAfter) {
+            Bill bill,
+            BigDecimal redeemedAmount,
+            BigDecimal remainingBalanceAfter,
+            String requestId) {
         if (bill != null && !userVoucher.getTenantId().equals(bill.getTenantId())) {
             throw new IllegalArgumentException("Cross-tenant redemption history is not allowed");
         }
@@ -56,10 +59,15 @@ public class RedemptionHistory {
         this.remainingBalanceAfter = remainingBalanceAfter.setScale(2, RoundingMode.HALF_UP);
         this.redeemedAt = LocalDateTime.now();
         this.tenantId = userVoucher.getTenantId();
+        this.requestId = requestId;
     }
 
     public Long getId() {
         return id;
+    }
+
+    public String getRequestId() {
+        return requestId;
     }
 
     public UserVoucher getUserVoucher() {
@@ -81,5 +89,8 @@ public class RedemptionHistory {
     public LocalDateTime getRedeemedAt() {
         return redeemedAt;
     }
-    public Long getTenantId() { return tenantId; }
+
+    public Long getTenantId() {
+        return tenantId;
+    }
 }

@@ -4,6 +4,8 @@
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
 
     <springProperty scope="context" name="LOG_PATH" source="logging.file.path" defaultValue="./logs"/>
+    <springProperty scope="context" name="SERVICE_NAME" source="spring.application.name"
+                    defaultValue="VoucherMangementSystem"/>
     <property name="LOG_FILE" value="${LOG_PATH}/app.log"/>
 
     <property name="LOG_PATTERN"
@@ -23,8 +25,12 @@
             <maxHistory>14</maxHistory>
             <totalSizeCap>1GB</totalSizeCap>
         </rollingPolicy>
-        <encoder>
-            <pattern>${LOG_PATTERN}</pattern>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <fieldNames>
+                <message>msg</message>
+                <stackTrace>exception</stackTrace>
+            </fieldNames>
+            <customFields>{"service":"${SERVICE_NAME}"}</customFields>
         </encoder>
     </appender>
 

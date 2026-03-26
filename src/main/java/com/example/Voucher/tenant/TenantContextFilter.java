@@ -13,8 +13,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+
+
+// this filter run only once per request
 @Component
-public class TenantContextFilter extends OncePerRequestFilter {
+public class TenantContextFilter extends OncePerRequestFilter { //
 
     private final TenantResolverService tenantResolverService;
 
@@ -24,6 +27,9 @@ public class TenantContextFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
+        /* skip tenant logic for swagger APIs because these endpoints don't need tenant context
+        */
+
         String path = request.getRequestURI();
         return path.startsWith("/v3/api-docs") || path.startsWith("/swagger-ui");
     }
@@ -50,9 +56,9 @@ public class TenantContextFilter extends OncePerRequestFilter {
                 resolvedTenantId = tenantResolverService.resolveTenantId(null);
             }
 
-            TenantContext.setTenantId(resolvedTenantId);
+            TenantContext.setTenantId(resolvedTenantId); // add tenantId into tenantContext
             if (resolvedTenantId != null) {
-                MDC.put("tenantId", String.valueOf(resolvedTenantId));
+                MDC.put("tenantId", String.valueOf(resolvedTenantId));// mdc is the logging context from slf4j.
             }
             filterChain.doFilter(request, response);
         } finally {
@@ -61,21 +67,26 @@ public class TenantContextFilter extends OncePerRequestFilter {
         }
     }
 
+
+
+    // Extracts tenant info from HTTP request header
     private Long resolveHeaderTenantId(HttpServletRequest request) {
         String tenantCodeHeader = request.getHeader(TenantConstants.TENANT_HEADER);
-        if (!StringUtils.hasText(tenantCodeHeader)) {
+        if (!StringUtils.hasText(tenantCodeHeader)) {// validate the header checks,not null,not spaces
             return null;
         }
         return tenantResolverService.resolveTenantId(tenantCodeHeader);
     }
 
+
+    // extract tenants form logged-in users from spring Security
     private Long resolveAuthenticatedTenantId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
             return null;
         }
-        Object principal = authentication.getPrincipal();
-        if (principal instanceof TenantAwareUserDetails tenantAwareUserDetails) {
+        Object principal = authentication.getPrincipal(); // principal is actual user object this will return the actual logged-in user
+        if (principal instanceof TenantAwareUserDetails tenantAwareUserDetails) { // validates from the tenantAwareUserDetails
             return tenantAwareUserDetails.getTenantId();
         }
         return null;

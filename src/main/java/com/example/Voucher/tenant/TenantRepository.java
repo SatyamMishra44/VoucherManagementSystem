@@ -1,6 +1,7 @@
 package com.example.Voucher.tenant;
 
 import java.util.Optional;
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface TenantRepository extends JpaRepository<Tenant, Long> {
@@ -10,5 +11,5 @@ public interface TenantRepository extends JpaRepository<Tenant, Long> {
 
     Optional<Tenant> findByIdAndActiveTrue(Long id);
 
-    java.util.List<Tenant> findAllByOrderByCreatedAtDesc();
+    List<Tenant> findAllByOrderByCreatedAtDesc();
 }

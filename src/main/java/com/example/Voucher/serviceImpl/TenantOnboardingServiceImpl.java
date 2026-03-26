@@ -26,6 +26,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class TenantOnboardingServiceImpl implements TenantOnboardingService {
 
+    // here we handle full lifecycle of tenant onboarding (signup → approval → tenant + admin creation).
+
     private static final Set<TenantOnboardingStatus> BLOCKING_REQUEST_STATUSES =
             Set.of(TenantOnboardingStatus.PENDING, TenantOnboardingStatus.APPROVED);
 

@@ -8,15 +8,16 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(
-        name = "bills",
-        indexes = @Index(name = "idx_bills_tenant_id", columnList = "tenant_id")
-)
+@Table(name = "bills", uniqueConstraints = @UniqueConstraint(name = "uc_bills_tenant_request", columnNames = {
+        "tenant_id", "request_id" }), indexes = @Index(name = "idx_bills_tenant_id", columnList = "tenant_id"))
 public class Bill {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "request_id", length = 100)
+    private String requestId;
 
     // Many bills -> one user
     @ManyToOne(fetch = FetchType.LAZY)
@@ -37,16 +38,21 @@ public class Bill {
     protected Bill() {
     }
 
-    public Bill(User user, BigDecimal totalAmount) {
+    public Bill(User user, BigDecimal totalAmount, String requestId) {
         this.user = user;
         this.totalAmount = totalAmount.setScale(2, RoundingMode.HALF_UP);
         this.createdAt = LocalDateTime.now();
         this.tenantId = user != null ? user.getTenantId() : null;
+        this.requestId = requestId;
     }
 
     // Getters only
     public Long getId() {
         return id;
+    }
+
+    public String getRequestId() {
+        return requestId;
     }
 
     public User getUser() {
@@ -60,5 +66,8 @@ public class Bill {
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
-    public Long getTenantId() { return tenantId; }
+
+    public Long getTenantId() {
+        return tenantId;
+    }
 }

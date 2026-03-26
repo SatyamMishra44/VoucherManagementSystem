@@ -56,10 +56,23 @@ public class UserVoucherServiceImpl implements UserVoucherService {
     }
 
     @Override
-    public UserVoucher purchaseVoucher(Long userId, String voucherCode, Integer quantity) {
-        log.info("action=purchaseVoucher started | userId={} voucherCode={} quantity={}", userId, voucherCode,
-                quantity);
+    public UserVoucher purchaseVoucher(Long userId, String voucherCode, Integer quantity, String requestId) {
+        log.info("action=purchaseVoucher started | userId={} voucherCode={} quantity={} requestId={}", userId,
+                voucherCode,
+                quantity, requestId);
         Long tenantId = TenantContext.requireTenantId();
+
+        if (requestId != null) {
+            java.util.Optional<UserVoucher> existing = userVoucherRepository.findByRequestIdAndTenantId(requestId,
+                    tenantId);
+            if (existing.isPresent()) {
+                log.info(
+                        "action=purchaseVoucher idempotency | userId={} requestId={} reason=Duplicate request detected, returning existing voucher",
+                        userId, requestId);
+                return existing.get();
+            }
+        }
+
         if (userId == null) {
             throw new IllegalArgumentException("User id is required");
         }
@@ -96,7 +109,8 @@ public class UserVoucherServiceImpl implements UserVoucherService {
                 user,
                 quantity,
                 totalPurchasedAmount,
-                totalPurchasedAmount);
+                totalPurchasedAmount,
+                requestId);
         UserVoucher saved = userVoucherRepository.save(userVoucher);
         log.info(
                 "action=purchaseVoucher completed | userId={} voucherCode={} quantity={} totalAmount={} userVoucherId={}",
@@ -105,10 +119,36 @@ public class UserVoucherServiceImpl implements UserVoucherService {
     }
 
     @Override
-    public RedemptionResult redeemVoucher(Long userId, Long userVoucherId, Long billId) {
+    public RedemptionResult redeemVoucher(Long userId, Long userVoucherId, Long billId, String requestId) {
         long startTime = System.currentTimeMillis();
-        log.info("action=redeemVoucher started | userId={} userVoucherId={} billId={}", userId, userVoucherId, billId);
+        log.info("action=redeemVoucher started | userId={} userVoucherId={} billId={} requestId={}", userId,
+                userVoucherId, billId, requestId);
         Long tenantId = TenantContext.requireTenantId();
+
+        if (requestId != null) {
+            java.util.Optional<RedemptionHistory> existing = redemptionHistoryRepository
+                    .findByRequestIdAndTenantId(requestId, tenantId);
+            if (existing.isPresent()) {
+                RedemptionHistory h = existing.get();
+                log.info(
+                        "action=redeemVoucher idempotency | userId={} requestId={} reason=Duplicate request detected, returning existing redemption history",
+                        userId, requestId);
+
+                BigDecimal billAmount = h.getBill().getTotalAmount();
+                BigDecimal deduction = h.getRedeemedAmount();
+                BigDecimal payable = billAmount.subtract(deduction).setScale(2, RoundingMode.HALF_UP);
+
+                return new RedemptionResult(
+                        h.getId(),
+                        h.getBill().getId(),
+                        h.getUserVoucher(),
+                        billAmount,
+                        deduction,
+                        payable,
+                        h.getRedeemedAt());
+            }
+        }
+
         if (userId == null) {
             throw new IllegalArgumentException("User id is required");
         }
@@ -174,10 +214,11 @@ public class UserVoucherServiceImpl implements UserVoucherService {
                 userVoucher,
                 bill,
                 deduction,
-                userVoucher.getRemainingBalance());
+                userVoucher.getRemainingBalance(),
+                requestId);
         redemptionHistoryRepository.save(history);
 
-        Transaction transaction = new Transaction(user, bill, effectiveBillAmount, payableAmount);
+        Transaction transaction = new Transaction(user, bill, effectiveBillAmount, payableAmount, requestId);
         transactionRepository.save(transaction);
 
         long elapsed = System.currentTimeMillis() - startTime;

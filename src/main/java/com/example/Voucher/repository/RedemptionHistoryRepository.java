@@ -12,4 +12,6 @@ public interface RedemptionHistoryRepository extends JpaRepository<RedemptionHis
     List<RedemptionHistory> findByUserVoucherUserIdAndTenantIdOrderByRedeemedAtDesc(Long userId, Long tenantId);
 
     List<RedemptionHistory> findByUserVoucherIdAndTenantIdOrderByRedeemedAtDesc(Long userVoucherId, Long tenantId);
+
+    java.util.Optional<RedemptionHistory> findByRequestIdAndTenantId(String requestId, Long tenantId);
 }

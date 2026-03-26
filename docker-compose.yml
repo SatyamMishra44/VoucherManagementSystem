@@ -89,7 +89,7 @@ services:
     volumes:
       - ./logs:/app/logs
       - ./promtail.yml:/etc/promtail/promtail.yml
-    command: -config.file=/etc/promtail/promtail.yml
+    command: -config.file=/etc/promtail/promtail.yml -config.expand-env=true
     depends_on:
       - loki
 

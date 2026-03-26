@@ -39,8 +39,7 @@ public class TenantVoucherAdministrationServiceImpl implements TenantVoucherAdmi
             VoucherTemplateRepository voucherTemplateRepository,
             UserRepository userRepository,
             UserVoucherRepository userVoucherRepository,
-            TenantRepository tenantRepository
-    ) {
+            TenantRepository tenantRepository) {
         this.tenantVoucherInventoryRepository = tenantVoucherInventoryRepository;
         this.tenantVoucherDistributionRepository = tenantVoucherDistributionRepository;
         this.voucherTemplateRepository = voucherTemplateRepository;
@@ -50,7 +49,8 @@ public class TenantVoucherAdministrationServiceImpl implements TenantVoucherAdmi
     }
 
     @Override
-    public TenantVoucherInventory purchaseForTenant(String voucherCode, Integer quantity, Long actorUserId, Long tenantId) {
+    public TenantVoucherInventory purchaseForTenant(String voucherCode, Integer quantity, Long actorUserId,
+            Long tenantId) {
         if (voucherCode == null || voucherCode.isBlank()) {
             throw new IllegalArgumentException("Voucher code is required");
         }
@@ -92,8 +92,7 @@ public class TenantVoucherAdministrationServiceImpl implements TenantVoucherAdmi
             Long targetUserId,
             Integer quantity,
             Long actorUserId,
-            Long tenantId
-    ) {
+            Long tenantId) {
         if (inventoryId == null) {
             throw new IllegalArgumentException("Inventory id is required");
         }
@@ -110,7 +109,8 @@ public class TenantVoucherAdministrationServiceImpl implements TenantVoucherAdmi
         User targetUser = userRepository.findByIdAndTenantId(targetUserId, tenantId)
                 .orElseThrow(() -> new IllegalArgumentException("Target user not found in tenant"));
 
-        TenantVoucherInventory inventory = tenantVoucherInventoryRepository.findByIdAndTenantIdForUpdate(inventoryId, tenantId)
+        TenantVoucherInventory inventory = tenantVoucherInventoryRepository
+                .findByIdAndTenantIdForUpdate(inventoryId, tenantId)
                 .orElseThrow(() -> new IllegalArgumentException("Tenant voucher inventory not found"));
         inventory.consumeStock(quantity);
         tenantVoucherInventoryRepository.save(inventory);
@@ -125,8 +125,8 @@ public class TenantVoucherAdministrationServiceImpl implements TenantVoucherAdmi
                 targetUser,
                 quantity,
                 totalAmount,
-                totalAmount
-        );
+                totalAmount,
+                null);
         userVoucherRepository.save(userVoucher);
 
         TenantVoucherDistribution distribution = new TenantVoucherDistribution(
@@ -135,8 +135,7 @@ public class TenantVoucherAdministrationServiceImpl implements TenantVoucherAdmi
                 targetUser,
                 distributor,
                 quantity,
-                totalAmount
-        );
+                totalAmount);
         return tenantVoucherDistributionRepository.save(distribution);
     }
 

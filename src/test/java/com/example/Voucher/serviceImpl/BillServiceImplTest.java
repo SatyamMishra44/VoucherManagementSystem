@@ -48,8 +48,7 @@ class BillServiceImplTest {
     void createBill_nullBill_throws() {
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
-                () -> billService.createBill(null)
-        );
+                () -> billService.createBill(null));
         assertTrue(ex.getMessage().contains("Bill cannot be null"));
         verifyNoInteractions(billRepository);
     }
@@ -61,8 +60,7 @@ class BillServiceImplTest {
 
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
-                () -> billService.createBill(bill)
-        );
+                () -> billService.createBill(bill));
         assertTrue(ex.getMessage().contains("Bill must be associated with a user"));
         verifyNoInteractions(billRepository);
     }
@@ -75,23 +73,21 @@ class BillServiceImplTest {
 
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
-                () -> billService.createBill(bill)
-        );
+                () -> billService.createBill(bill));
         assertTrue(ex.getMessage().contains("Bill amount must be greater than zero"));
         verifyNoInteractions(billRepository);
     }
 
     @Test
     void createBill_validBill_savesAndReturns() {
-        //Arrange
+        // Arrange
         User user = buildUser();
-        Bill bill = new Bill(user, new BigDecimal("100.00"));
+        Bill bill = new Bill(user, new BigDecimal("100.00"), null);
 
-        //Act
+        // Act
         when(billRepository.save(bill)).thenReturn(bill);
 
         Bill saved = billService.createBill(bill);
-
 
         // Assert
         assertSame(bill, saved);
@@ -102,14 +98,13 @@ class BillServiceImplTest {
     void getBillById_nullId_throws() {
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
-                () -> billService.getBillById(null)
-        );
+                () -> billService.getBillById(null));
         assertTrue(ex.getMessage().contains("Bill ID cannot be null"));
         verifyNoInteractions(billRepository);
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"0.00", "-1.00"})
+    @ValueSource(strings = { "0.00", "-1.00" })
     void createBill_nonPositiveTotalAmount_throws(String amount) {
         Bill bill = mock(Bill.class);
         when(bill.getUser()).thenReturn(buildUser());
@@ -117,8 +112,7 @@ class BillServiceImplTest {
 
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
-                () -> billService.createBill(bill)
-        );
+                () -> billService.createBill(bill));
         assertTrue(ex.getMessage().contains("Bill amount must be greater than zero"));
         verifyNoInteractions(billRepository);
     }
@@ -126,7 +120,7 @@ class BillServiceImplTest {
     @Test
     void getBillById_validId_returnsBill() {
         User user = buildUser();
-        Bill bill = new Bill(user, new BigDecimal("50.00"));
+        Bill bill = new Bill(user, new BigDecimal("50.00"), null);
         when(billRepository.findByIdAndTenantId(10L, 1L)).thenReturn(java.util.Optional.of(bill));
 
         java.util.Optional<Bill> result = billService.getBillById(10L);
@@ -140,8 +134,7 @@ class BillServiceImplTest {
     void getBillsByUserId_nullUserId_throws() {
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
-                () -> billService.getBillsByUserId(null)
-        );
+                () -> billService.getBillsByUserId(null));
         assertTrue(ex.getMessage().contains("User ID cannot be null"));
         verifyNoInteractions(billRepository);
     }
@@ -149,7 +142,7 @@ class BillServiceImplTest {
     @Test
     void getBillsByUserId_validUserId_returnsList() {
         User user = buildUser();
-        Bill bill = new Bill(user, new BigDecimal("120.00"));
+        Bill bill = new Bill(user, new BigDecimal("120.00"), null);
         java.util.List<Bill> bills = java.util.List.of(bill);
         when(billRepository.findByUserIdAndTenantId(5L, 1L)).thenReturn(bills);
 
@@ -174,7 +167,7 @@ class BillServiceImplTest {
     @Test
     void calculateTotalAmount_billFound_returnsAmount() {
         User user = buildUser();
-        Bill bill = new Bill(user, new BigDecimal("75.50"));
+        Bill bill = new Bill(user, new BigDecimal("75.50"), null);
         when(billRepository.findByIdAndTenantId(7L, 1L)).thenReturn(java.util.Optional.of(bill));
 
         BigDecimal result = billService.calculateTotalAmount(7L);
@@ -190,8 +183,7 @@ class BillServiceImplTest {
                 "hash",
                 "1234567890",
                 "test@example.com",
-                LocalDateTime.now()
-        );
+                LocalDateTime.now());
         user.setTenantId(1L);
         return user;
     }

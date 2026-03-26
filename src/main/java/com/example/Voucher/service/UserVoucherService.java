@@ -9,9 +9,9 @@ import java.util.List;
 
 public interface UserVoucherService {
 
-    UserVoucher purchaseVoucher(Long userId, String voucherCode, Integer quantity);
+    UserVoucher purchaseVoucher(Long userId, String voucherCode, Integer quantity, String requestId);
 
-    RedemptionResult redeemVoucher(Long userId, Long userVoucherId, Long billId);
+    RedemptionResult redeemVoucher(Long userId, Long userVoucherId, Long billId, String requestId);
 
     List<UserVoucher> getUserVouchers(Long userId);
 
@@ -26,6 +26,5 @@ public interface UserVoucherService {
             LocalDate issuedTo,
             LocalDate expiryFrom,
             LocalDate expiryTo,
-            String status
-    );
+            String status);
 }

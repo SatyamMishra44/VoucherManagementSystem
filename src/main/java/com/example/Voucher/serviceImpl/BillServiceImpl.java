@@ -42,10 +42,21 @@ public class BillServiceImpl implements BillService {
             throw new IllegalArgumentException("Bill amount must be greater than zero");
         }
 
-        log.info("action=createBill started | userId={} amount={}", bill.getUser().getId(), bill.getTotalAmount());
+        Long tenantId = TenantContext.requireTenantId();
+        if (bill.getRequestId() != null) {
+            Optional<Bill> existing = billRepository.findByRequestIdAndTenantId(bill.getRequestId(), tenantId);
+            if (existing.isPresent()) {
+                log.info("action=createBill | requestId={} result=duplicate returning existing billId={}",
+                        bill.getRequestId(), existing.get().getId());
+                return existing.get();
+            }
+        }
+
+        log.info("action=createBill started | userId={} amount={} requestId={}",
+                bill.getUser().getId(), bill.getTotalAmount(), bill.getRequestId());
         Bill saved = billRepository.save(bill);
-        log.info("action=createBill completed | billId={} userId={} amount={}", saved.getId(), saved.getUser().getId(),
-                saved.getTotalAmount());
+        log.info("action=createBill completed | billId={} userId={} amount={} requestId={}",
+                saved.getId(), saved.getUser().getId(), saved.getTotalAmount(), saved.getRequestId());
         return saved;
     }
 

@@ -45,9 +45,21 @@ public class TransactionServiceImpl implements TransactionService {
             throw new IllegalArgumentException("Final amount cannot exceed total amount");
         }
 
-        log.info("action=createTransaction started | userId={} totalAmount={} finalAmount={}",
+        log.info("action=createTransaction started | userId={} totalAmount={} finalAmount={} requestId={}",
                 transaction.getUser() != null ? transaction.getUser().getId() : null,
-                transaction.getTotalAmount(), transaction.getFinalAmount());
+                transaction.getTotalAmount(), transaction.getFinalAmount(), transaction.getRequestId());
+
+        if (transaction.getRequestId() != null) {
+            java.util.Optional<Transaction> existing = transactionRepository
+                    .findByRequestIdAndTenantId(transaction.getRequestId(), TenantContext.requireTenantId());
+            if (existing.isPresent()) {
+                log.info(
+                        "action=createTransaction idempotency | userId={} requestId={} reason=Duplicate request detected, returning existing transaction",
+                        transaction.getUser() != null ? transaction.getUser().getId() : null,
+                        transaction.getRequestId());
+                return existing.get();
+            }
+        }
         Transaction saved = transactionRepository.save(transaction);
         log.info(
                 "action=createTransaction completed | transactionId={} userId={} totalAmount={} finalAmount={} discount={}",

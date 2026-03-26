@@ -4,6 +4,9 @@ import java.util.Collection;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 
+
+
+// tell user belongs to which tenant
 public class TenantAwareUserDetails extends User {
 
     private final Long userId;
@@ -18,7 +21,7 @@ public class TenantAwareUserDetails extends User {
             Collection<? extends GrantedAuthority> authorities
     ) {
         super(username, password, enabled, true, true, true, authorities);
-        this.userId = userId;
+        this.userId = userId; // extending the parent class object with help of super to initialize spring security user
         this.tenantId = tenantId;
     }
 

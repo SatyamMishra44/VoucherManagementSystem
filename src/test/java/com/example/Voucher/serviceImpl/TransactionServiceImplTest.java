@@ -50,22 +50,20 @@ class TransactionServiceImplTest {
     void createTransaction_nullTransaction_throws() {
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
-                () -> transactionService.createTransaction(null)
-        );
+                () -> transactionService.createTransaction(null));
         assertTrue(ex.getMessage().contains("Transaction cannot be null"));
         verifyNoInteractions(transactionRepository);
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"0.00", "-1.00"})
+    @ValueSource(strings = { "0.00", "-1.00" })
     void createTransaction_totalAmountNotPositive_throws(String amount) {
         Transaction transaction = mock(Transaction.class);
         when(transaction.getTotalAmount()).thenReturn(new BigDecimal(amount));
 
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
-                () -> transactionService.createTransaction(transaction)
-        );
+                () -> transactionService.createTransaction(transaction));
         assertTrue(ex.getMessage().contains("Total amount must be greater than zero"));
         verifyNoInteractions(transactionRepository);
     }
@@ -78,8 +76,7 @@ class TransactionServiceImplTest {
 
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
-                () -> transactionService.createTransaction(transaction)
-        );
+                () -> transactionService.createTransaction(transaction));
         assertTrue(ex.getMessage().contains("Final amount cannot be negative"));
         verifyNoInteractions(transactionRepository);
     }
@@ -92,8 +89,7 @@ class TransactionServiceImplTest {
 
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
-                () -> transactionService.createTransaction(transaction)
-        );
+                () -> transactionService.createTransaction(transaction));
         assertTrue(ex.getMessage().contains("Final amount cannot exceed total amount"));
         verifyNoInteractions(transactionRepository);
     }
@@ -113,8 +109,7 @@ class TransactionServiceImplTest {
     void getTransactionById_nullId_throws() {
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
-                () -> transactionService.getTransactionById(null)
-        );
+                () -> transactionService.getTransactionById(null));
         assertTrue(ex.getMessage().contains("Transaction ID cannot be null"));
         verifyNoInteractions(transactionRepository);
     }
@@ -148,8 +143,7 @@ class TransactionServiceImplTest {
     void getTransactionByUserId_nullUserId_throws() {
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
-                () -> transactionService.getTransactionByUserId(null)
-        );
+                () -> transactionService.getTransactionByUserId(null));
         assertTrue(ex.getMessage().contains("User ID cannot be null"));
         verifyNoInteractions(transactionRepository);
     }
@@ -177,9 +171,7 @@ class TransactionServiceImplTest {
                         null,
                         null,
                         null,
-                        null
-                )
-        );
+                        null));
         assertTrue(ex.getMessage().contains("minTotalAmount cannot be greater than maxTotalAmount"));
         verifyNoInteractions(transactionRepository);
     }
@@ -195,9 +187,7 @@ class TransactionServiceImplTest {
                         new BigDecimal("10.00"),
                         new BigDecimal("5.00"),
                         null,
-                        null
-                )
-        );
+                        null));
         assertTrue(ex.getMessage().contains("minFinalAmount cannot be greater than maxFinalAmount"));
         verifyNoInteractions(transactionRepository);
     }
@@ -216,9 +206,7 @@ class TransactionServiceImplTest {
                         null,
                         null,
                         fromTime,
-                        toTime
-                )
-        );
+                        toTime));
         assertTrue(ex.getMessage().contains("fromTime cannot be after toTime"));
         verifyNoInteractions(transactionRepository);
     }
@@ -237,8 +225,7 @@ class TransactionServiceImplTest {
                 new BigDecimal("5.00"),
                 new BigDecimal("90.00"),
                 fromTime,
-                toTime
-        )).thenReturn(transactions);
+                toTime)).thenReturn(transactions);
 
         List<Transaction> result = transactionService.getTransactionsWithFilters(
                 2L,
@@ -247,8 +234,7 @@ class TransactionServiceImplTest {
                 new BigDecimal("5.00"),
                 new BigDecimal("90.00"),
                 fromTime,
-                toTime
-        );
+                toTime);
 
         assertSame(transactions, result);
         verify(transactionRepository).findAllByTenantIdWithFilters(
@@ -259,14 +245,13 @@ class TransactionServiceImplTest {
                 new BigDecimal("5.00"),
                 new BigDecimal("90.00"),
                 fromTime,
-                toTime
-        );
+                toTime);
     }
 
     private Transaction buildTransaction() {
         User user = buildUser();
-        Bill bill = new Bill(user, new BigDecimal("100.00"));
-        return new Transaction(user, bill, new BigDecimal("100.00"), new BigDecimal("80.00"));
+        Bill bill = new Bill(user, new BigDecimal("100.00"), null);
+        return new Transaction(user, bill, new BigDecimal("100.00"), new BigDecimal("80.00"), null);
     }
 
     private User buildUser() {
@@ -276,8 +261,7 @@ class TransactionServiceImplTest {
                 "hash",
                 "1234567890",
                 "test@example.com",
-                LocalDateTime.now()
-        );
+                LocalDateTime.now());
         user.setTenantId(1L);
         return user;
     }

@@ -24,75 +24,66 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/v1/bills")
 public class BillController {
 
-    private final BillService billService;
-    private final UserService userService;
-    private final CurrentUserService currentUserService;
+        private final BillService billService;
+        private final UserService userService;
+        private final CurrentUserService currentUserService;
 
-    public BillController(
-            BillService billService,
-            UserService userService,
-            CurrentUserService currentUserService
-    ) {
-        this.billService = billService;
-        this.userService = userService;
-        this.currentUserService = currentUserService;
-    }
+        public BillController(
+                        BillService billService,
+                        UserService userService,
+                        CurrentUserService currentUserService) {
+                this.billService = billService;
+                this.userService = userService;
+                this.currentUserService = currentUserService;
+        }
 
-    @PostMapping
-    @PreAuthorize("hasAnyAuthority(@roleProperties.getPlatformAdmin(), @roleProperties.getTenantAdmin())")
-    @Operation(
-            summary = "Admin: Create Bill",
-            description = "Create a bill record for a user. This bill can later be used during redemption."
-    )
-    public ResponseEntity<BillResponseDto> createBill(
-            @Valid @RequestBody BillCreateRequestDto requestDto) {
+        @PostMapping
+        @PreAuthorize("hasAnyAuthority(@roleProperties.getPlatformAdmin(), @roleProperties.getTenantAdmin())")
+        @Operation(summary = "Admin: Create Bill", description = "Create a bill record for a user. This bill can later be used during redemption.")
+        public ResponseEntity<BillResponseDto> createBill(
+                        @Valid @RequestBody BillCreateRequestDto requestDto,
+                        @RequestHeader(value = "X-Request-ID", required = false) String requestId) {
 
-        User user = userService.findById(requestDto.getUserId())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                User user = userService.findById(requestDto.getUserId())
+                                .orElseThrow(() -> new RuntimeException("User not found"));
 
-        Bill bill = new Bill(user, requestDto.getTotalAmount());
-        Bill savedBill = billService.createBill(bill);
+                Bill bill = new Bill(user, requestDto.getTotalAmount(), requestId);
+                Bill savedBill = billService.createBill(bill);
 
-        return new ResponseEntity<>(toResponse(savedBill), HttpStatus.CREATED);
-    }
+                return new ResponseEntity<>(toResponse(savedBill), HttpStatus.CREATED);
+        }
 
-    @GetMapping("/{billId}")
-    @PreAuthorize("hasAnyAuthority(@roleProperties.getPlatformAdmin(), @roleProperties.getTenantAdmin(), @roleProperties.getUser())")
-    @Operation(
-            summary = "View Bill By Id",
-            description = "Admin can view any bill. User can view only own bill."
-    )
-    public ResponseEntity<BillResponseDto> getBillById(@PathVariable Long billId) {
-        boolean isAdmin = currentUserService.isCurrentUserAdmin();
-        Optional<Bill> billOpt = isAdmin
-                ? billService.getBillById(billId)
-                : billService.getBillByIdForUser(billId, currentUserService.getCurrentUserId());
-        return billOpt
-                .map(bill -> ResponseEntity.ok(toResponse(bill)))
-                .orElseGet(() -> ResponseEntity.notFound().build());
-    }
+        @GetMapping("/{billId}")
+        @PreAuthorize("hasAnyAuthority(@roleProperties.getPlatformAdmin(), @roleProperties.getTenantAdmin(), @roleProperties.getUser())")
+        @Operation(summary = "View Bill By Id", description = "Admin can view any bill. User can view only own bill.")
+        public ResponseEntity<BillResponseDto> getBillById(@PathVariable Long billId) {
+                boolean isAdmin = currentUserService.isCurrentUserAdmin();
+                Optional<Bill> billOpt = isAdmin
+                                ? billService.getBillById(billId)
+                                : billService.getBillByIdForUser(billId, currentUserService.getCurrentUserId());
+                return billOpt
+                                .map(bill -> ResponseEntity.ok(toResponse(bill)))
+                                .orElseGet(() -> ResponseEntity.notFound().build());
+        }
 
-    @GetMapping("/user/{userId}")
-    @PreAuthorize("hasAnyAuthority(@roleProperties.getPlatformAdmin(), @roleProperties.getTenantAdmin(), @roleProperties.getUser())")
-    @Operation(
-            summary = "View Bills By User",
-            description = "Get all bills for one user. Users can view only their own bills."
-    )
-    public ResponseEntity<List<BillResponseDto>> getBillsByUserId(@PathVariable Long userId) {
-        currentUserService.assertSelfOrAdmin(userId);
-        List<BillResponseDto> bills = billService.getBillsByUserId(userId)
-                .stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(bills);
-    }
+        @GetMapping("/user/{userId}")
+        @PreAuthorize("hasAnyAuthority(@roleProperties.getPlatformAdmin(), @roleProperties.getTenantAdmin(), @roleProperties.getUser())")
+        @Operation(summary = "View Bills By User", description = "Get all bills for one user. Users can view only their own bills.")
+        public ResponseEntity<List<BillResponseDto>> getBillsByUserId(@PathVariable Long userId) {
+                currentUserService.assertSelfOrAdmin(userId);
+                List<BillResponseDto> bills = billService.getBillsByUserId(userId)
+                                .stream()
+                                .map(this::toResponse)
+                                .collect(Collectors.toList());
+                return ResponseEntity.ok(bills);
+        }
 
-    private BillResponseDto toResponse(Bill bill) {
-        BillResponseDto dto = new BillResponseDto();
-        dto.setBillId(bill.getId());
-        dto.setUserId(bill.getUser().getId());
-        dto.setTotalAmount(bill.getTotalAmount());
-        dto.setCreatedAt(bill.getCreatedAt());
-        return dto;
-    }
+        private BillResponseDto toResponse(Bill bill) {
+                BillResponseDto dto = new BillResponseDto();
+                dto.setBillId(bill.getId());
+                dto.setUserId(bill.getUser().getId());
+                dto.setTotalAmount(bill.getTotalAmount());
+                dto.setCreatedAt(bill.getCreatedAt());
+                return dto;
+        }
 }
